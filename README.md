@@ -6,7 +6,7 @@ Built for Arbiter Hacks V1 (Theme Track: Rethinking Waste).
 
 ## Develop
 
-Requires Node 22.12+ (Vitest 5) and pnpm.
+Requires Node `^22.12.0 || ^24.0.0 || >=26.0.0` (the range Vitest 5 supports, also in `package.json` `engines`) and pnpm.
 
 ```sh
 pnpm install

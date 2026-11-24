@@ -298,6 +298,50 @@ describe("add, parent, fill and thread", () => {
     expect(y[1]).toBeCloseTo(0);
   });
 
+  it("cut lifts by the gap in world cm under a scaled parent, in the state and the animation", () => {
+    const pr = parse(
+      project({
+        scene: {
+          objects: [
+            { id: "tray", primitive: "jar", transform: { scale: [1, 2, 1] }, material: { preset: "glass" } },
+            { id: "b", parent: "tray", primitive: "bottle", transform: { position: [20, 0, 0] }, material: { preset: "pet" } },
+          ],
+        },
+        steps: steps([{ type: "cut", target: "b", y: 18, gap: 2 }]),
+      }),
+    );
+    const worldY = (f: Frame, key: string) => f.items.find((i) => i.key === key)!.position[1];
+    const end = frameOf(stateAtStep(pr, 1));
+    expect(worldY(end, "b.top") - worldY(end, "b.bottom")).toBeCloseTo(2);
+    const tr = planTransition(pr, 0, 1);
+    const late = sampleTransition(tr, tr.duration * 0.999);
+    expect(worldY(late, "b#above") - worldY(late, "b#below")).toBeCloseTo(2, 1);
+  });
+
+  it("an interrupted blend keeps an attached object's exact transform from start to end", () => {
+    const pr = parse(
+      project({
+        scene: {
+          objects: [
+            { id: "tray", primitive: "jar", transform: { scale: [2, 1, 1] }, material: { preset: "glass" } },
+            { id: "pin", parent: "tray", primitive: "cap", transform: { rotation: [0, 0, 90] }, material: { preset: "plastic" } },
+          ],
+        },
+        steps: steps([{ type: "transform", target: "pin", rotation: [0, 0, 0] }]),
+      }),
+    );
+    const moving = planTransition(pr, 0, 1);
+    const onScreen = sampleTransition(moving, moving.duration * 0.5);
+    const back = planTransition(pr, 1, 0, onScreen);
+    const pinAt = (t: number) => sampleTransition(back, t).items.find((i) => i.id === "pin")!;
+    const start = onScreen.items.find((i) => i.id === "pin")!.basis!;
+    const target = frameOf(stateAtStep(pr, 0)).items.find((i) => i.id === "pin")!.basis!;
+    pinAt(back.duration * 0.001).basis!.forEach((v, i) => expect(v).toBeCloseTo(start[i], 2));
+    pinAt(back.duration * 0.999).basis!.forEach((v, i) => expect(v).toBeCloseTo(target[i], 2));
+    // Child +y stays on the parent's stretched x axis at the end: [-2, 0, 0].
+    expect(target[1]).toBeCloseTo(-2);
+  });
+
   it("fill uses a mirrored container's world-bottom end", () => {
     const s0 = stateWith([{ id: "jar", primitive: "jar", transform: { position: [0, 12, 0], scale: [1, -1, 1] }, material: { preset: "glass" } }]);
     const s = applyOp(s0, op({ type: "fill", target: "jar", id: "water", level: 0.5 }));

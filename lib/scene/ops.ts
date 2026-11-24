@@ -9,7 +9,7 @@
  * handler to `HANDLERS` below. The mapped type makes a missing handler a type error.
  */
 import { PRESET_DEFAULTS } from "./materials";
-import { add3, clamp01, easeOut, eulerToMat, lerp, lerp3, lerpColor, matToEuler, mulMat, mulMatVec, rotate3, type M3, type V3 } from "./math";
+import { add3, clamp01, easeOut, eulerToMat, invMat, lerp, lerp3, lerpColor, lerpMat, matToEuler, mulMat, mulMatVec, rotate3, type M3, type V3 } from "./math";
 import {
   getPrimitive,
   meshBounds,
@@ -307,7 +307,8 @@ export function blendFrames(a: Frame, b: Frame, u: number): Frame {
       const o: RenderItem = { ...blendObject(ia, ib, u), key: ib.key };
       if (ib.clip) o.clip = ib.clip;
       else delete o.clip;
-      if (u >= 1 && ib.basis) o.basis = ib.basis;
+      // Attached objects keep an exact transform the whole way (no snap to the approximate pose).
+      if (ia.basis || ib.basis) o.basis = u >= 1 ? (ib.basis ?? linearOf(ib)) : lerpMat(ia.basis ?? linearOf(ia), ib.basis ?? linearOf(ib), u);
       else delete o.basis;
       if (ia.reveal !== undefined || ib.reveal !== undefined) o.reveal = lerp(ia.reveal ?? 1, ib.reveal ?? 1, u);
       items.push(o);
@@ -340,8 +341,19 @@ export function cutPartIds(op: OpOf<"cut">) {
 const CUT_SWEEP = 0.55; // share of the cut animation spent drawing the cut line
 
 /** Offset that moves a part `gap` cm along its own (rotated, possibly mirrored) local +y. */
-function liftAlongLocalY(o: ObjectState, gap: number): V3 {
-  return rotate3([0, gap * Math.sign(o.scale[1] || 1), 0], o.rotation);
+/**
+ * Position offset (in the object's parent frame) that moves it `gap` world cm
+ * along its own +y, accounting for its rotation, mirroring and every parent's
+ * rotation and scale.
+ */
+function liftAlongLocalY(state: SceneState, o: ObjectState, gap: number): V3 {
+  const parentLinear: M3 = o.parent && findObject(state, o.parent) ? worldLinear(state, o.parent) : [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  const dir = mulMatVec(mulMat(parentLinear, linearOf(o)), [0, 1, 0]);
+  const len = Math.hypot(dir[0], dir[1], dir[2]);
+  if (len < 1e-12) return [0, 0, 0];
+  const worldOffset: V3 = [(dir[0] / len) * gap, (dir[1] / len) * gap, (dir[2] / len) * gap];
+  const inv = invMat(parentLinear);
+  return inv ? mulMatVec(inv, worldOffset) : worldOffset;
 }
 
 const cut: OpHandler<"cut"> = {
@@ -360,7 +372,7 @@ const cut: OpHandler<"cut"> = {
     const o = findObject(state, op.target)!;
     const [lo, hi] = extentOf(o);
     const { top, bottom } = cutPartIds(op);
-    const lift = liftAlongLocalY(o, op.gap);
+    const lift = liftAlongLocalY(state, o, op.gap);
     return replace(state, op.target, [
       { ...o, id: bottom, slice: [lo, op.y] },
       { ...o, id: top, slice: [op.y, hi], position: add3(o.position, lift) },
@@ -382,7 +394,7 @@ const cut: OpHandler<"cut"> = {
       return { items: [...others, { ...o, key: o.id }], effects: [{ ...line, progress: u / CUT_SWEEP }] };
     }
     const v = easeOut(clamp01((u - CUT_SWEEP) / (1 - CUT_SWEEP)));
-    const lift = liftAlongLocalY(o, op.gap * v);
+    const lift = liftAlongLocalY(prev, o, op.gap * v);
     return {
       items: [
         ...others,

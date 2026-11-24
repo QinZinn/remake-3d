@@ -79,3 +79,21 @@ export function mulMat(a: M3, b: M3): M3 {
 export function mulMatVec(m: M3, v: readonly number[]): V3 {
   return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]];
 }
+
+/** Inverse of a 3×3 matrix, or null when it is singular. */
+export function invMat(m: M3): M3 | null {
+  const [a, b, c, d, e, f, g, h, i] = m;
+  const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+  const det = a * A + b * B + c * C;
+  if (Math.abs(det) < 1e-12) return null;
+  const k = 1 / det;
+  return [
+    A * k, -(b * i - c * h) * k, (b * f - c * e) * k,
+    B * k, (a * i - c * g) * k, -(a * f - c * d) * k,
+    C * k, -(a * h - b * g) * k, (a * e - b * d) * k,
+  ];
+}
+
+export function lerpMat(a: M3, b: M3, t: number): M3 {
+  return a.map((v, i) => v + (b[i] - v) * t) as M3;
+}
