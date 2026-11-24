@@ -50,7 +50,8 @@ export default defineProject({
       title: "Self-Watering Planter System Made From 2L Coke Bottle",
       publisher: "Instructables",
       url: "https://www.instructables.com/Self-Watering-Planter-System-Made-From-2L-Coke-Bot/",
-      license: "Author's Instructables license; linked for reference only, no text or images copied",
+      license: "CC BY-NC-SA 4.0 (as shown on the page); linked for reference only, no text or images copied",
+      note: "By natdragon5000 on Instructables.",
     },
   ],
   camera: { position: [40, 32, 60], target: [0, 15, 0] },
@@ -114,10 +115,27 @@ export default defineProject({
     },
     {
       title: "Prepare the wick",
-      text: "Cut a strip of old cotton T-shirt about two centimetres wide and twenty-five long. Wet it, then push one end up through the neck of the top piece so a short tail sits inside the pot and the rest hangs out of the mouth.",
+      text: "Cut a strip of old cotton T-shirt about two centimetres wide and twenty-five long. Wet it, then feed it through the neck of the top piece so several centimetres sit inside the pot and the rest hangs out of the mouth.",
       tip: "Cotton wicks water well; synthetic fabric barely does. Pre-wetting the strip gets the flow started.",
-      ops: [],
-      camera: { position: [26, 36, 42], target: [0, 24, 0] },
+      ops: [
+        {
+          type: "thread",
+          target: "bottle.top",
+          id: "wick",
+          // In the top piece's own frame (the bottle's original coordinates): from inside the pot, out through the neck.
+          path: [
+            [0.8, 21.5, 0.3],
+            [0.4, 24.5, 0],
+            [0, 27.5, 0],
+            [0, 30, 0],
+            [0, 32.5, 0.2],
+            [0.3, 35, 0.6],
+          ],
+          radius: 0.35,
+          material: { preset: "fabric", color: "#e9e2d3" },
+        },
+      ],
+      camera: { position: [26, 38, 46], target: [0, 26, 0] },
     },
     {
       title: "Turn the top upside down into the tank",
@@ -135,14 +153,20 @@ export default defineProject({
       title: "Add water and soil",
       text: "Lift the pot out, fill the tank about a third full of water, and put the pot back so the wick dips into it. Fill the pot with potting soil, pressing it gently around the wick.",
       tip: "Keep the water level below the bottle neck so the soil never sits in water.",
-      ops: [],
+      ops: [
+        { type: "transform", target: "bottle.top", position: [13, 46, 0], arc: 10 },
+        { type: "fill", target: "bottle.bottom", id: "water", level: 0.3, material: { preset: "water" } },
+        { type: "transform", target: "bottle.top", position: [0, 38.6, 0], arc: 10 },
+        { type: "fill", target: "bottle.top", id: "soil", level: 0.85, material: { preset: "soil" } },
+      ],
+      camera: { position: [12, 68, 30], target: [4, 10, 0] },
     },
     {
       title: "Plant and place",
       text: "Plant your seedling or sow a few seeds, water the soil once from the top to settle it, and put the planter somewhere bright. Top up the tank whenever the level drops; the wick does the rest.",
       tip: "Herbs such as basil and mint are easy first plants for this planter.",
       ops: [],
-      camera: { position: [44, 36, 64], target: [0, 14, 0] },
+      camera: { position: [40, 44, 62], target: [0, 14, 0] },
     },
   ],
 });

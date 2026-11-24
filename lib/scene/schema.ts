@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { MATERIAL_IDS, TOOL_IDS } from "@/lib/taxonomy";
-import { BottleParams } from "./primitives/bottle";
-import { CanParams } from "./primitives/can";
-import { CapParams } from "./primitives/cap";
-import { JarParams } from "./primitives/jar";
-import { SleeveParams } from "./primitives/sleeve";
+import { BottleParams, CanParams, CapParams, JarParams, SleeveParams, SolidParams, TubeParams } from "./primitives/params";
 import { validateSteps } from "./validate";
 
 // ---------------------------------------------------------------- basics
@@ -23,7 +19,7 @@ export const ToolId = z.enum(TOOL_IDS);
 // ---------------------------------------------------------------- scene objects
 
 /** Visual (render) material presets; distinct from taxonomy materials. */
-export const MATERIAL_PRESETS = ["pet", "glass", "aluminium", "plastic", "cardboard", "fabric", "soil", "wood", "paint"] as const;
+export const MATERIAL_PRESETS = ["pet", "glass", "aluminium", "plastic", "cardboard", "fabric", "soil", "water", "wood", "paint"] as const;
 export const RenderMaterial = z.object({
   preset: z.enum(MATERIAL_PRESETS),
   color: HexColor.optional(),
@@ -44,6 +40,8 @@ const objectBase = {
   label: z.string().optional(),
   /** Which taxonomy material this object depicts (for highlighting). */
   source: MaterialId.optional(),
+  /** Parent object: this object's transform is relative to it, so it moves with it. */
+  parent: ObjectId.optional(),
   transform: Transform.default({ position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] }),
   material: RenderMaterial,
 };
@@ -55,6 +53,8 @@ export const SceneObjectSchema = z.discriminatedUnion("primitive", [
   z.object({ ...objectBase, primitive: z.literal("can"), params: CanParams.default(CanParams.parse({})) }),
   z.object({ ...objectBase, primitive: z.literal("cap"), params: CapParams.default(CapParams.parse({})) }),
   z.object({ ...objectBase, primitive: z.literal("sleeve"), params: SleeveParams.default(SleeveParams.parse({})) }),
+  z.object({ ...objectBase, primitive: z.literal("solid"), params: SolidParams }),
+  z.object({ ...objectBase, primitive: z.literal("tube"), params: TubeParams }),
 ]);
 export type SceneObject = z.infer<typeof SceneObjectSchema>;
 export type SceneObjectInput = z.input<typeof SceneObjectSchema>;
@@ -109,7 +109,42 @@ export const TransformOp = z.object({
   arc: z.number().min(0).default(0),
 });
 
-export const SceneOpSchema = z.discriminatedUnion("type", [CutOp, RemoveOp, PaintOp, TransformOp]);
+/** Bring a new object into the scene (it fades in). */
+export const AddOp = z.object({
+  type: z.literal("add"),
+  object: SceneObjectSchema,
+  duration: opBase.duration,
+});
+
+/**
+ * Fill a lathe container (soil, water, sand) to `level` (0..1 of its height),
+ * measured from whichever end is lowest in the world, so it works upside down.
+ * Creates a child of the container, `id` (default `<target>.fill`).
+ */
+export const FillOp = z.object({
+  type: z.literal("fill"),
+  ...opBase,
+  id: ObjectId.optional(),
+  level: z.number().gt(0).max(1).default(0.8),
+  /** Radius factor so the fill sits inside the container wall. */
+  inset: z.number().gt(0).max(1).default(0.94),
+  material: RenderMaterial.default({ preset: "soil" }),
+});
+
+/**
+ * Thread a string, wick or wire along `path` (points in the target's local
+ * frame). Creates a tube `id` as a child of the target; it grows along the path.
+ */
+export const ThreadOp = z.object({
+  type: z.literal("thread"),
+  ...opBase,
+  id: ObjectId,
+  path: z.array(Vec3).min(2),
+  radius: z.number().positive().default(0.3),
+  material: RenderMaterial.default({ preset: "fabric" }),
+});
+
+export const SceneOpSchema = z.discriminatedUnion("type", [CutOp, RemoveOp, PaintOp, TransformOp, AddOp, FillOp, ThreadOp]);
 export type SceneOp = z.infer<typeof SceneOpSchema>;
 export type SceneOpInput = z.input<typeof SceneOpSchema>;
 export type OpType = SceneOp["type"];

@@ -1,20 +1,9 @@
-import { z } from "zod";
-import { definePrimitive, easeCos, type ProfilePoint } from "./types";
+import type { BottleParams } from "./params";
+import { defineLathe, easeCos, type ProfilePoint } from "./types";
 
-export const BottleParams = z.object({
-  height: z.number().positive().default(30),
-  radius: z.number().positive().default(4.5),
-  neckRadius: z.number().positive().default(1.4),
-  neckHeight: z.number().positive().default(2.6),
-  shoulderHeight: z.number().positive().default(8),
-  /** Number of shallow grip rings on the body (0 for none). */
-  ribs: z.number().int().min(0).max(8).default(2),
-});
-
-export const bottle = definePrimitive({
+export const bottle = defineLathe<BottleParams>({
   id: "bottle",
   label: "Bottle",
-  params: BottleParams,
   profile(p) {
     const pts: ProfilePoint[] = [];
     const r = p.radius;
@@ -34,7 +23,7 @@ export const bottle = definePrimitive({
       if (p.ribs > 0) {
         const t = (y - bodyStart) / (bodyTop - bodyStart);
         const band = Math.sin(t * Math.PI * (p.ribs + 1));
-        rr = r - 0.12 * Math.max(0, -band) * (t > 0.1 && t < 0.9 ? 1 : 0);
+        rr = r - Math.min(0.12, r * 0.03) * Math.max(0, -band) * (t > 0.1 && t < 0.9 ? 1 : 0);
       }
       pts.push([rr, y]);
     }

@@ -6,7 +6,7 @@
  * blends the two states directly. Either way the end frame is exactly the
  * target state, so scrubbing is exact.
  */
-import { applyOp, applySteps, blendStates, frameOf, opDuration, opFrame, type Frame, type SceneState } from "./ops";
+import { applyOp, applySteps, blendFrames, blendStates, frameOf, opDuration, opFrame, resolveFrame, type Frame, type SceneState } from "./ops";
 import { clamp01, easeInOut } from "./math";
 import type { CameraView, Project, SceneOp } from "./schema";
 
@@ -24,6 +24,8 @@ export interface Transition {
   /** Seconds. 0 means "show `to` immediately". */
   duration: number;
   phases: Phase[] | null;
+  /** When set, the transition starts from this on-screen frame (an interrupted animation). */
+  fromFrame?: Frame;
 }
 
 export const JUMP_DURATION = 0.9;
@@ -41,8 +43,17 @@ export function clampStep(steps: Steps, k: number): number {
   return Math.max(0, Math.min(steps.length, Math.trunc(k)));
 }
 
-export function planTransition(project: HasScene, fromStep: number, toStep: number, from = stateAtStep(project, fromStep)): Transition {
+/**
+ * Plan the animation from step `fromStep` to `toStep`. Pass `fromFrame` (what
+ * is on screen) when the previous animation has not finished: the new one then
+ * blends from it instead of popping to the old target first.
+ */
+export function planTransition(project: HasScene, fromStepRaw: number, toStepRaw: number, fromFrame?: Frame): Transition {
+  const fromStep = clampStep(project.steps, fromStepRaw);
+  const toStep = clampStep(project.steps, toStepRaw);
+  const from = stateAtStep(project, fromStep);
   const to = stateAtStep(project, toStep);
+  if (fromFrame) return { from, to, duration: JUMP_DURATION, phases: null, fromFrame };
   if (fromStep === toStep) return { from, to, duration: 0, phases: null };
   if (toStep === fromStep + 1) {
     const ops = project.steps[toStep - 1].ops;
@@ -65,8 +76,9 @@ export function planTransition(project: HasScene, fromStep: number, toStep: numb
 /** Frame at `time` seconds into the transition. */
 export function sampleTransition(tr: Transition, time: number): Frame {
   if (tr.duration <= 0 || time >= tr.duration) return frameOf(tr.to);
+  if (tr.fromFrame) return time <= 0 ? tr.fromFrame : blendFrames(tr.fromFrame, frameOf(tr.to), easeInOut(time / tr.duration));
   if (time <= 0) return frameOf(tr.from);
-  if (!tr.phases) return blendStates(tr.from, tr.to, easeInOut(time / tr.duration));
+  if (!tr.phases) return resolveFrame(blendStates(tr.from, tr.to, easeInOut(time / tr.duration)));
   const ph = tr.phases.find((p) => time < p.end) ?? tr.phases[tr.phases.length - 1];
   const u = easeInOut(clamp01((time - ph.start) / (ph.end - ph.start)));
   return opFrame(ph.prev, ph.next, ph.op, u);

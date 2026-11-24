@@ -1,21 +1,14 @@
-import { z } from "zod";
-import { definePrimitive, easeCos, type ProfilePoint } from "./types";
+import type { CanParams } from "./params";
+import { defineLathe, easeCos, type ProfilePoint } from "./types";
 
-export const CanParams = z.object({
-  height: z.number().positive().default(12.2),
-  radius: z.number().positive().default(3.3),
-  topRadius: z.number().positive().default(2.7),
-});
-
-export const can = definePrimitive({
+export const can = defineLathe<CanParams>({
   id: "can",
   label: "Can",
-  params: CanParams,
   profile(p) {
     const pts: ProfilePoint[] = [];
     const r = p.radius;
-    // Domed base taper.
-    pts.push([0, 0.35], [r * 0.75, 0], [r * 0.95, 0.25], [r, 0.8]);
+    // Base rim (flat underside, rounded edge).
+    pts.push([0, 0], [r * 0.75, 0], [r * 0.95, 0.25], [r, 0.8]);
     const neck = p.height - 1.3;
     pts.push([r, neck]);
     for (let i = 1; i <= 8; i++) {

@@ -11,6 +11,7 @@ export const PRESET_DEFAULTS: Record<Preset, { color: string; opacity: number }>
   cardboard: { color: "#b98a57", opacity: 1 },
   fabric: { color: "#e8e1d4", opacity: 1 },
   soil: { color: "#4a3426", opacity: 1 },
+  water: { color: "#6fb3d9", opacity: 1 },
   wood: { color: "#a8794c", opacity: 1 },
   paint: { color: "#c0563b", opacity: 1 },
 };

@@ -2,25 +2,39 @@
  * Scene ops: a pure reducer over scene state, plus how each op animates.
  *
  * Design rule: the state shown at step k is `applySteps(scene, steps.slice(0, k))`.
- * Nothing here touches three.js or the DOM, so it runs in unit tests and in
- * `pnpm build` validation. The renderer only draws `Frame`s.
+ * Nothing here touches three.js, zod or the DOM, so it runs in unit tests, in
+ * `pnpm build` validation and in a small client bundle. The renderer only draws `Frame`s.
  *
  * Adding an op: add its Zod schema to `SceneOpSchema` (schema.ts), then add a
  * handler to `HANDLERS` below. The mapped type makes a missing handler a type error.
  */
 import { PRESET_DEFAULTS } from "./materials";
-import { add3, clamp01, easeOut, lerp, lerp3, lerpColor, rotate3, type V3 } from "./math";
-import { profileOf, profileRange, radiusAt, sliceProfile, type PrimitiveId, type ProfilePoint } from "./primitives";
-import type { OpOf, OpType, RenderMaterial, Scene, SceneOp, Step } from "./schema";
+import { add3, clamp01, easeOut, eulerToMat, lerp, lerp3, lerpColor, matToEuler, mulMat, mulMatVec, rotate3, type M3, type V3 } from "./math";
+import {
+  getPrimitive,
+  meshBounds,
+  profileMaxRadius,
+  profileOf,
+  profileRange,
+  radiusAt,
+  sliceProfile,
+  type Bounds,
+  type PrimitiveId,
+  type ProfilePoint,
+} from "./primitives";
+import type { OpOf, OpType, RenderMaterial, Scene, SceneObject, SceneOp, Step } from "./schema";
 
 // ---------------------------------------------------------------- state
 
 export interface ObjectState {
   id: string;
   primitive: PrimitiveId;
-  params: Readonly<Record<string, number>>;
-  /** Kept y range of the lathe profile, or null for the whole shape. */
+  /** Parsed params (defaults filled). Numbers for most shapes, point lists for solid/tube. */
+  params: Readonly<Record<string, unknown>>;
+  /** Kept y range of a lathe profile, or null for the whole shape. */
   slice: readonly [number, number] | null;
+  /** Transform is relative to this object when set. */
+  parent?: string;
   position: V3;
   /** Euler XYZ, degrees. */
   rotation: V3;
@@ -36,53 +50,88 @@ export interface SceneState {
   readonly objects: readonly ObjectState[];
 }
 
-export function initialState(scene: Scene): SceneState {
-  return {
-    objects: scene.objects.map((o) => {
-      const d = PRESET_DEFAULTS[o.material.preset];
-      return {
-        id: o.id,
-        primitive: o.primitive,
-        params: o.params as Record<string, number>,
-        slice: null,
-        position: [...o.transform.position] as V3,
-        rotation: [...o.transform.rotation] as V3,
-        scale: [...o.transform.scale] as V3,
-        preset: o.material.preset,
-        color: o.material.color ?? d.color,
-        opacity: o.material.opacity ?? d.opacity,
-        label: o.label,
-        source: o.source,
-      };
-    }),
+function materialState(m: RenderMaterial) {
+  const d = PRESET_DEFAULTS[m.preset];
+  return { preset: m.preset, color: m.color ?? d.color, opacity: m.opacity ?? d.opacity };
+}
+
+export function objectStateFrom(o: SceneObject): ObjectState {
+  const s: ObjectState = {
+    id: o.id,
+    primitive: o.primitive,
+    params: o.params as Record<string, unknown>,
+    slice: null,
+    position: [...o.transform.position] as V3,
+    rotation: [...o.transform.rotation] as V3,
+    scale: [...o.transform.scale] as V3,
+    ...materialState(o.material),
   };
+  if (o.parent !== undefined) s.parent = o.parent;
+  if (o.label !== undefined) s.label = o.label;
+  if (o.source !== undefined) s.source = o.source;
+  return s;
+}
+
+export function initialState(scene: Scene): SceneState {
+  return { objects: scene.objects.map(objectStateFrom) };
 }
 
 export function findObject(state: SceneState, id: string): ObjectState | undefined {
   return state.objects.find((o) => o.id === id);
 }
 
-/** The y range an object currently covers in its local frame. */
-export function extentOf(o: ObjectState): [number, number] {
-  return o.slice ? [o.slice[0], o.slice[1]] : profileRange(fullProfile(o));
+export function childrenOf(state: SceneState, id: string): ObjectState[] {
+  return state.objects.filter((o) => o.parent === id);
 }
 
-const profileCache = new WeakMap<object, ProfilePoint[]>();
+/** The object and everything attached to it, depth first. */
+export function descendantIds(state: SceneState, id: string): string[] {
+  return [id, ...childrenOf(state, id).flatMap((c) => descendantIds(state, c.id))];
+}
 
-/** Full (unsliced) profile of an object, memoised on its params object. */
-export function fullProfile(o: Pick<ObjectState, "primitive" | "params">): ProfilePoint[] {
-  let p = profileCache.get(o.params);
+/** Profiles memoised per params object and primitive; frozen so callers cannot corrupt the cache. */
+const profileCache = new WeakMap<object, Map<PrimitiveId, readonly ProfilePoint[]>>();
+
+export function isLatheObject(o: Pick<ObjectState, "primitive">): boolean {
+  return getPrimitive(o.primitive).kind === "lathe";
+}
+
+/** Full (unsliced) profile of a lathe object, memoised and frozen. */
+export function fullProfile(o: Pick<ObjectState, "primitive" | "params">): readonly ProfilePoint[] {
+  let byPrimitive = profileCache.get(o.params);
+  if (!byPrimitive) {
+    byPrimitive = new Map();
+    profileCache.set(o.params, byPrimitive);
+  }
+  let p = byPrimitive.get(o.primitive);
   if (!p) {
-    p = profileOf(o.primitive, o.params);
-    profileCache.set(o.params, p);
+    p = Object.freeze(profileOf(o.primitive, o.params).map((pt) => Object.freeze([pt[0], pt[1]] as const)));
+    byPrimitive.set(o.primitive, p);
   }
   return p;
 }
 
-/** The profile an object currently has (sliced after a cut). */
-export function currentProfile(o: ObjectState): ProfilePoint[] {
+/** The profile a lathe object currently has (sliced after a cut). */
+export function currentProfile(o: Pick<ObjectState, "primitive" | "params" | "slice">): readonly ProfilePoint[] {
   const full = fullProfile(o);
   return o.slice ? sliceProfile(full, o.slice[0], o.slice[1]) : full;
+}
+
+/** The y range an object currently covers in its local frame. */
+export function extentOf(o: ObjectState): [number, number] {
+  if (!isLatheObject(o)) {
+    const b = meshBounds(o.primitive, o.params);
+    return [b.min[1], b.max[1]];
+  }
+  return o.slice ? [o.slice[0], o.slice[1]] : profileRange(fullProfile(o));
+}
+
+/** Local axis-aligned bounds of an object. */
+export function boundsOf(o: ObjectState): Bounds {
+  if (!isLatheObject(o)) return meshBounds(o.primitive, o.params);
+  const [lo, hi] = extentOf(o);
+  const r = profileMaxRadius(currentProfile(o));
+  return { min: [-r, lo, -r], max: [r, hi, r] };
 }
 
 function replace(state: SceneState, id: string, next: ObjectState[]): SceneState {
@@ -95,18 +144,29 @@ function update(state: SceneState, id: string, patch: Partial<ObjectState>): Sce
   return replace(state, id, [{ ...o, ...patch }]);
 }
 
-// ---------------------------------------------------------------- frames
-
-/** One drawable at one instant. `clip` keeps only the local half-space above/below y. */
-export interface RenderItem extends ObjectState {
-  key: string;
-  clip?: { y: number; keep: "above" | "below" };
+/** World rotation matrix of an object, composing its parents. */
+export function worldRotation(state: SceneState, id: string, depth = 0): M3 {
+  const o = findObject(state, id)!;
+  const own = eulerToMat(o.rotation);
+  return o.parent && depth < 32 && findObject(state, o.parent) ? mulMat(worldRotation(state, o.parent, depth + 1), own) : own;
 }
 
-/** Non-object visuals, positioned in the host object's local frame. */
+// ---------------------------------------------------------------- frames
+
+/** One drawable at one instant, in world space once resolved. */
+export interface RenderItem extends ObjectState {
+  key: string;
+  /** Keep only the local half-space above/below y (clipping plane). */
+  clip?: { y: number; keep: "above" | "below" };
+  /** 0..1 of the shape drawn along its length (tubes). */
+  reveal?: number;
+}
+
+/** Non-object visuals, positioned in the host object's frame. */
 export interface CutLineEffect {
   kind: "cut-line";
   key: string;
+  hostId: string;
   host: Pick<ObjectState, "position" | "rotation" | "scale">;
   y: number;
   radius: number;
@@ -120,28 +180,77 @@ export interface Frame {
   effects: Effect[];
 }
 
-export function frameOf(state: SceneState): Frame {
+/**
+ * Turn parent-relative transforms into world transforms. Children also take
+ * their parent's opacity (so they fade with it). Resolved items have no
+ * `parent`, which makes this idempotent.
+ */
+export function resolveFrame(f: Frame): Frame {
+  const byId = new Map<string, RenderItem>();
+  for (const it of f.items) if (!byId.has(it.id) || !it.clip) byId.set(it.id, it);
+  const done = new Map<RenderItem, RenderItem>();
+  const resolve = (it: RenderItem, depth = 0): RenderItem => {
+    const hit = done.get(it);
+    if (hit) return hit;
+    let out: RenderItem = it;
+    const parentItem = it.parent ? byId.get(it.parent) : undefined;
+    if (parentItem && parentItem !== it && depth < 32) {
+      const p = resolve(parentItem, depth + 1);
+      const pr = eulerToMat(p.rotation);
+      const local: V3 = [it.position[0] * p.scale[0], it.position[1] * p.scale[1], it.position[2] * p.scale[2]];
+      out = {
+        ...it,
+        position: add3(p.position, mulMatVec(pr, local)),
+        rotation: matToEuler(mulMat(pr, eulerToMat(it.rotation))),
+        scale: [it.scale[0] * p.scale[0], it.scale[1] * p.scale[1], it.scale[2] * p.scale[2]],
+        opacity: it.opacity * p.opacity,
+      };
+    }
+    if (out.parent !== undefined) {
+      const { parent: _drop, ...rest } = out; // eslint-disable-line @typescript-eslint/no-unused-vars
+      out = rest;
+    }
+    done.set(it, out);
+    return out;
+  };
+  const items = f.items.map((it) => resolve(it));
+  const effects = f.effects.map((e) => {
+    const host = items.find((i) => i.id === e.hostId && !i.clip) ?? items.find((i) => i.id === e.hostId);
+    return host ? { ...e, host: { position: host.position, rotation: host.rotation, scale: host.scale } } : e;
+  });
+  return { items, effects };
+}
+
+/** Local (unresolved) frame of a state. */
+export function localFrameOf(state: SceneState): Frame {
   return { items: state.objects.map((o) => ({ ...o, key: o.id })), effects: [] };
 }
 
+/** World-space frame of a state: what the renderer draws when nothing moves. */
+export function frameOf(state: SceneState): Frame {
+  return resolveFrame(localFrameOf(state));
+}
+
 /**
- * Interpolate two poses of one object. Rotation turns about the middle of the
- * object's extent (not its origin at the base), so a flipped part turns in place
- * instead of swinging around the floor.
+ * Interpolate two poses of one object. Rotation turns about the centre of the
+ * object's bounds (not its origin at the base), so a flipped part turns in
+ * place instead of swinging around the floor.
  */
-function blendObject(a: ObjectState, b: ObjectState, u: number): ObjectState {
-  const [lo, hi] = extentOf(b);
-  const pivot: V3 = [0, (lo + hi) / 2, 0];
+export function blendObject<T extends ObjectState>(a: ObjectState, b: T, u: number): T {
+  const bb = boundsOf(b);
+  const pivot = lerp3(bb.min, bb.max, 0.5);
+  const scaled = (s: readonly number[]): V3 => [pivot[0] * s[0], pivot[1] * s[1], pivot[2] * s[2]];
   const rotation = lerp3(a.rotation, b.rotation, u);
-  const pa = add3(a.position, rotate3(pivot, a.rotation));
-  const pb = add3(b.position, rotate3(pivot, b.rotation));
+  const scale = lerp3(a.scale, b.scale, u);
+  const pa = add3(a.position, rotate3(scaled(a.scale), a.rotation));
+  const pb = add3(b.position, rotate3(scaled(b.scale), b.rotation));
   const pivotWorld = lerp3(pa, pb, u);
-  const r = rotate3(pivot, rotation);
+  const r = rotate3(scaled(scale), rotation);
   return {
     ...b,
     position: [pivotWorld[0] - r[0], pivotWorld[1] - r[1], pivotWorld[2] - r[2]],
     rotation,
-    scale: lerp3(a.scale, b.scale, u),
+    scale,
     color: lerpColor(a.color, b.color, u),
     opacity: lerp(a.opacity, b.opacity, u),
     preset: u < 0.5 ? a.preset : b.preset,
@@ -150,8 +259,8 @@ function blendObject(a: ObjectState, b: ObjectState, u: number): ObjectState {
 }
 
 /**
- * Generic transition between any two states: shared objects interpolate,
- * objects only in `a` fade out, objects only in `b` fade in.
+ * Generic transition between any two states (local frames): shared objects
+ * interpolate, objects only in `a` fade out, objects only in `b` fade in.
  */
 export function blendStates(a: SceneState, b: SceneState, u: number): Frame {
   const items: RenderItem[] = [];
@@ -166,15 +275,43 @@ export function blendStates(a: SceneState, b: SceneState, u: number): Frame {
   return { items, effects: [] };
 }
 
+/**
+ * Blend two resolved (world-space) frames, matching items by key, then by id.
+ * Used when an animation is interrupted: the new transition starts from what
+ * is on screen instead of popping to the end of the old one.
+ */
+export function blendFrames(a: Frame, b: Frame, u: number): Frame {
+  const used = new Set<RenderItem>();
+  const items: RenderItem[] = [];
+  for (const ib of b.items) {
+    const ia = a.items.find((x) => !used.has(x) && x.key === ib.key) ?? a.items.find((x) => !used.has(x) && x.id === ib.id);
+    if (ia) {
+      used.add(ia);
+      const o: RenderItem = { ...blendObject(ia, ib, u), key: ib.key };
+      const clip = u < 0.5 ? ia.clip : ib.clip;
+      if (clip) o.clip = clip;
+      else delete o.clip;
+      if (ia.reveal !== undefined || ib.reveal !== undefined) o.reveal = lerp(ia.reveal ?? 1, ib.reveal ?? 1, u);
+      items.push(o);
+    } else items.push({ ...ib, opacity: ib.opacity * u });
+  }
+  for (const ia of a.items) if (!used.has(ia)) items.push({ ...ia, opacity: ia.opacity * (1 - u) });
+  return { items, effects: u < 0.5 ? a.effects : b.effects };
+}
+
 // ---------------------------------------------------------------- handlers
 
 export interface OpHandler<T extends OpType> {
   /** Default forward animation length, seconds. */
   duration: number;
-  /** Extra validity checks; the target's existence is checked for every op. */
+  /** Ids that must exist when the op runs. Default: `[op.target]`. */
+  targets?(op: OpOf<T>): string[];
+  /** Ids the op brings into the scene; they must not exist yet. */
+  creates?(op: OpOf<T>): string[];
+  /** Extra validity checks, after targets/creates were checked. */
   check?(state: SceneState, op: OpOf<T>): string | null;
   apply(state: SceneState, op: OpOf<T>): SceneState;
-  /** Frame at eased progress u (0..1) from `prev` to `next`. Defaults to `blendStates`. */
+  /** Local frame at eased progress u (0..1) from `prev` to `next`. Defaults to `blendStates`. */
   frame?(prev: SceneState, next: SceneState, op: OpOf<T>, u: number): Frame;
 }
 
@@ -184,22 +321,28 @@ export function cutPartIds(op: OpOf<"cut">) {
 
 const CUT_SWEEP = 0.55; // share of the cut animation spent drawing the cut line
 
+/** Offset that moves a part `gap` cm along its own (rotated, possibly mirrored) local +y. */
+function liftAlongLocalY(o: ObjectState, gap: number): V3 {
+  return rotate3([0, gap * Math.sign(o.scale[1] || 1), 0], o.rotation);
+}
+
 const cut: OpHandler<"cut"> = {
   duration: 2.2,
+  creates: (op) => [cutPartIds(op).top, cutPartIds(op).bottom],
   check(state, op) {
     const o = findObject(state, op.target)!;
+    if (!isLatheObject(o)) return `cut needs a lathe object; \`${op.target}\` is a ${o.primitive}`;
+    const kids = childrenOf(state, op.target);
+    if (kids.length) return `cut: \`${op.target}\` has attached objects (${kids.map((c) => c.id).join(", ")}); cut it before attaching`;
     const [lo, hi] = extentOf(o);
     if (!(op.y > lo + 0.05 && op.y < hi - 0.05)) return `cut y=${op.y} is outside ${op.target} (y ${lo.toFixed(2)}..${hi.toFixed(2)})`;
-    const { top, bottom } = cutPartIds(op);
-    if (top === bottom) return "cut parts need two different ids";
-    for (const id of [top, bottom]) if (findObject(state, id)) return `cut part id \`${id}\` already exists`;
     return null;
   },
   apply(state, op) {
     const o = findObject(state, op.target)!;
     const [lo, hi] = extentOf(o);
     const { top, bottom } = cutPartIds(op);
-    const lift = rotate3([0, op.gap, 0], o.rotation);
+    const lift = liftAlongLocalY(o, op.gap);
     return replace(state, op.target, [
       { ...o, id: bottom, slice: [lo, op.y] },
       { ...o, id: top, slice: [op.y, hi], position: add3(o.position, lift) },
@@ -208,20 +351,20 @@ const cut: OpHandler<"cut"> = {
   frame(prev, _next, op, u) {
     const o = findObject(prev, op.target)!;
     const others = prev.objects.filter((x) => x.id !== op.target).map((x) => ({ ...x, key: x.id }));
-    const profile = currentProfile(o);
     const line: CutLineEffect = {
       kind: "cut-line",
       key: `${op.target}#cut`,
+      hostId: o.id,
       host: o,
       y: op.y,
-      radius: radiusAt(profile, op.y),
+      radius: radiusAt(currentProfile(o), op.y),
       progress: 1,
     };
     if (u <= CUT_SWEEP) {
       return { items: [...others, { ...o, key: o.id }], effects: [{ ...line, progress: u / CUT_SWEEP }] };
     }
     const v = easeOut(clamp01((u - CUT_SWEEP) / (1 - CUT_SWEEP)));
-    const lift = rotate3([0, op.gap * v, 0], o.rotation);
+    const lift = liftAlongLocalY(o, op.gap * v);
     return {
       items: [
         ...others,
@@ -236,9 +379,11 @@ const cut: OpHandler<"cut"> = {
 const remove: OpHandler<"remove"> = {
   duration: 1.2,
   apply(state, op) {
-    return replace(state, op.target, []);
+    const gone = new Set(descendantIds(state, op.target));
+    return { objects: state.objects.filter((o) => !gone.has(o.id)) };
   },
   frame(prev, _next, op, u) {
+    // Attached objects follow the parent away: they are resolved relative to it.
     return {
       items: prev.objects.map((x) =>
         x.id === op.target
@@ -281,15 +426,112 @@ const transform: OpHandler<"transform"> = {
   },
 };
 
-export const HANDLERS: { [K in OpType]: OpHandler<K> } = { cut, remove, paint, transform };
+const add: OpHandler<"add"> = {
+  duration: 0.8,
+  targets: (op) => (op.object.parent ? [op.object.parent] : []),
+  creates: (op) => [op.object.id],
+  apply(state, op) {
+    return { objects: [...state.objects, objectStateFrom(op.object)] };
+  },
+};
+
+export function fillId(op: OpOf<"fill">): string {
+  return op.id ?? `${op.target}.fill`;
+}
+
+/** The local y range a fill occupies, measured from the container's lowest end in the world. */
+function fillRange(state: SceneState, op: OpOf<"fill">): { range: [number, number]; upsideDown: boolean } {
+  const o = findObject(state, op.target)!;
+  const [lo, hi] = extentOf(o);
+  const up = mulMatVec(worldRotation(state, op.target), [0, 1, 0]);
+  const upsideDown = up[1] < 0;
+  const depth = (hi - lo) * op.level;
+  return { range: upsideDown ? [hi - depth, hi] : [lo, lo + depth], upsideDown };
+}
+
+const fill: OpHandler<"fill"> = {
+  duration: 1.6,
+  creates: (op) => [fillId(op)],
+  check(state, op) {
+    const o = findObject(state, op.target)!;
+    return isLatheObject(o) ? null : `fill needs a lathe container; \`${op.target}\` is a ${o.primitive}`;
+  },
+  apply(state, op) {
+    const o = findObject(state, op.target)!;
+    const { range } = fillRange(state, op);
+    const points = sliceProfile(currentProfile(o), range[0], range[1]).map(([r, y]) => [r * op.inset, y] as [number, number]);
+    const filled: ObjectState = {
+      id: fillId(op),
+      primitive: "solid",
+      params: { points },
+      slice: null,
+      parent: op.target,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      ...materialState(op.material),
+    };
+    return { objects: [...state.objects, filled] };
+  },
+  frame(prev, next, op, u) {
+    // The fill rises from the bottom: a clipping plane moves up through it.
+    const { range, upsideDown } = fillRange(prev, op);
+    const level = upsideDown ? range[1] - (range[1] - range[0]) * u : range[0] + (range[1] - range[0]) * u;
+    const f = localFrameOf(next);
+    f.items = f.items.map((it): RenderItem => (it.id === fillId(op) ? { ...it, clip: { y: level, keep: upsideDown ? "above" : "below" } } : it));
+    return f;
+  },
+};
+
+const thread: OpHandler<"thread"> = {
+  duration: 1.8,
+  creates: (op) => [op.id],
+  apply(state, op) {
+    const tubeObj: ObjectState = {
+      id: op.id,
+      primitive: "tube",
+      params: { points: op.path.map((p) => [...p]), radius: op.radius },
+      slice: null,
+      parent: op.target,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      ...materialState(op.material),
+    };
+    return { objects: [...state.objects, tubeObj] };
+  },
+  frame(_prev, next, op, u) {
+    // The tube grows along its path.
+    const f = localFrameOf(next);
+    f.items = f.items.map((it): RenderItem => (it.id === op.id ? { ...it, reveal: u } : it));
+    return f;
+  },
+};
+
+export const HANDLERS: { [K in OpType]: OpHandler<K> } = { cut, remove, paint, transform, add, fill, thread };
 
 function handlerOf<T extends OpType>(op: OpOf<T>): OpHandler<T> {
   return HANDLERS[op.type as T];
 }
 
+/** Ids an op brings into the scene. */
+export function createdIds(op: SceneOp): string[] {
+  return handlerOf(op).creates?.(op as never) ?? [];
+}
+
+function targetsOf(op: SceneOp): string[] {
+  const h = handlerOf(op);
+  return h.targets ? h.targets(op as never) : [(op as { target: string }).target];
+}
+
 /** Why `op` cannot be applied to `state`, or null if it can. */
 export function checkOp(state: SceneState, op: SceneOp): string | null {
-  if (!findObject(state, op.target)) return `op \`${op.type}\` targets unknown object \`${op.target}\` (present: ${state.objects.map((o) => o.id).join(", ") || "none"})`;
+  for (const id of targetsOf(op)) {
+    if (!findObject(state, id)) return `op \`${op.type}\` targets unknown object \`${id}\` (present: ${state.objects.map((o) => o.id).join(", ") || "none"})`;
+  }
+  const created = createdIds(op);
+  if (new Set(created).size !== created.length) return `op \`${op.type}\` creates the same id twice (${created.join(", ")})`;
+  for (const id of created) if (findObject(state, id)) return `op \`${op.type}\` would create \`${id}\`, which already exists`;
   return handlerOf(op).check?.(state, op as never) ?? null;
 }
 
@@ -303,9 +545,10 @@ export function opDuration(op: SceneOp): number {
   return op.duration ?? handlerOf(op).duration;
 }
 
+/** World-space frame of `op` at eased progress u. */
 export function opFrame(prev: SceneState, next: SceneState, op: SceneOp, u: number): Frame {
   const h = handlerOf(op);
-  return h.frame ? h.frame(prev, next, op as never, u) : blendStates(prev, next, u);
+  return resolveFrame(h.frame ? h.frame(prev, next, op as never, u) : blendStates(prev, next, u));
 }
 
 /** Scene state after applying every op of `steps`, in order. */

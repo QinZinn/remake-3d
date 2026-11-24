@@ -23,11 +23,18 @@ export default function ProjectView({ project }: { project: Project }) {
   const listRef = useRef<HTMLOListElement>(null);
 
   const [speed, setSpeed] = useState(1);
-  // Deep link: /project/x#step-3 opens step 3; ?speed=0.25 slows animations (for recording).
+  const [record, setRecord] = useState(false);
+  // Deep link: /project/x#step-3 opens step 3 (also when the hash is edited later);
+  // ?speed=0.25 slows animations and ?record=1 keeps the canvas capturable, for recording.
   useEffect(() => {
-    setStep(readStepFromHash(n));
-    const sp = Number(new URLSearchParams(window.location.search).get("speed"));
+    const syncHash = () => setStep(readStepFromHash(n));
+    syncHash();
+    const q = new URLSearchParams(window.location.search);
+    const sp = Number(q.get("speed"));
     if (sp > 0 && sp <= 4) setSpeed(sp);
+    setRecord(q.get("record") === "1");
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
   }, [n]);
 
   const changeStep = useCallback(
@@ -51,7 +58,7 @@ export default function ProjectView({ project }: { project: Project }) {
     <div className="mx-auto flex max-w-7xl flex-col lg:h-screen lg:flex-row">
       {/* Viewer: sticky on top on mobile, left column on desktop. */}
       <section aria-label="3D preview" className="sticky top-0 z-10 h-[52vh] shrink-0 border-b border-stone-200 bg-[#eef3ef] lg:static lg:h-screen lg:flex-1 lg:border-r lg:border-b-0">
-        <Player project={project} step={step} onStepChange={changeStep} speed={speed} />
+        <Player project={project} step={step} onStepChange={changeStep} speed={speed} record={record} />
       </section>
 
       <div className="flex flex-col gap-8 px-5 py-6 lg:w-[30rem] lg:overflow-y-auto lg:py-8">
@@ -108,7 +115,7 @@ export default function ProjectView({ project }: { project: Project }) {
               const active = k === step;
               const done = k < step;
               return (
-                <li key={k} data-step={k}>
+                <li key={k} data-step={k} className="scroll-mt-[54vh] lg:scroll-mt-4">
                   <button
                     type="button"
                     onClick={() => changeStep(k)}

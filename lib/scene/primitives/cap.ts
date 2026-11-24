@@ -1,16 +1,10 @@
-import { z } from "zod";
-import { definePrimitive, type ProfilePoint } from "./types";
-
-export const CapParams = z.object({
-  height: z.number().positive().default(1.4),
-  radius: z.number().positive().default(1.75),
-});
+import type { CapParams } from "./params";
+import { defineLathe, type ProfilePoint } from "./types";
 
 /** Screw cap, open side down. */
-export const cap = definePrimitive({
+export const cap = defineLathe<CapParams>({
   id: "cap",
   label: "Cap",
-  params: CapParams,
   profile(p) {
     const pts: ProfilePoint[] = [];
     const ridges = 10;

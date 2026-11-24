@@ -1,19 +1,9 @@
-import { z } from "zod";
-import { definePrimitive, easeCos, type ProfilePoint } from "./types";
+import type { JarParams } from "./params";
+import { defineLathe, easeCos, type ProfilePoint } from "./types";
 
-export const JarParams = z.object({
-  height: z.number().positive().default(12),
-  radius: z.number().positive().default(4.2),
-  mouthRadius: z.number().positive().default(3.4),
-  shoulderHeight: z.number().positive().default(1.6),
-  /** Height of the threaded band at the top. */
-  threadHeight: z.number().positive().default(1.2),
-});
-
-export const jar = definePrimitive({
+export const jar = defineLathe<JarParams>({
   id: "jar",
   label: "Jar",
-  params: JarParams,
   profile(p) {
     const pts: ProfilePoint[] = [];
     const r = p.radius;

@@ -29,17 +29,22 @@ export const MATERIALS = {
   "bottle-cap": {
     label: { en: "Bottle cap", vi: "Nắp chai" },
     category: "plastic",
-    aliases: ["cap", "plastic cap", "lid", "nắp", "nắp nhựa"],
+    aliases: ["cap", "plastic cap", "screw cap", "nắp chai", "nắp nhựa"],
   },
   "hdpe-jug": {
-    label: { en: "HDPE milk jug", vi: "Can nhựa HDPE" },
+    label: { en: "HDPE milk jug", vi: "Bình nhựa HDPE (bình sữa)" },
     category: "plastic",
     aliases: ["milk jug", "plastic jug", "detergent bottle", "can nhựa", "bình sữa nhựa"],
   },
   "aluminium-can": {
     label: { en: "Aluminium can", vi: "Lon nhôm" },
     category: "metal",
-    aliases: ["aluminum can", "soda can", "beer can", "drink can", "tin can", "lon", "lon nước", "lon bia", "vỏ lon"],
+    aliases: ["aluminum can", "soda can", "beer can", "drink can", "lon nhôm", "lon nước", "lon bia", "vỏ lon"],
+  },
+  "steel-can": {
+    label: { en: "Steel food can (tin can)", vi: "Lon sắt / hộp thiếc" },
+    category: "metal",
+    aliases: ["tin can", "food can", "soup can", "steel can", "tin", "lon sắt", "hộp thiếc", "lon đồ hộp"],
   },
   "glass-jar": {
     label: { en: "Glass jar", vi: "Hũ thủy tinh" },
@@ -185,7 +190,8 @@ export function labelOf(id: MaterialId | ToolId, locale: Locale = "en"): string 
   return entry.label[locale];
 }
 
-function normalize(text: string): string {
+/** The normalisation `findByText` applies (trim, lower case, NFC, single spaces). */
+export function normalize(text: string): string {
   return text.trim().toLowerCase().normalize("NFC").replace(/\s+/g, " ");
 }
 

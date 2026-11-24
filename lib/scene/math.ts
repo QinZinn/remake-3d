@@ -35,3 +35,47 @@ export function lerpColor(a: string, b: string, t: number): string {
   if (a.toLowerCase() === b.toLowerCase()) return a;
   return rgbToHex(lerp3(hexToRgb(a), hexToRgb(b), t));
 }
+
+/** Row-major 3×3 matrix. */
+export type M3 = [number, number, number, number, number, number, number, number, number];
+
+/** Rotation matrix of an XYZ Euler in degrees (three.js convention, R = Rx·Ry·Rz). */
+export function eulerToMat(e: readonly number[]): M3 {
+  const [x, y, z] = e.map((d) => d * DEG);
+  const a = Math.cos(x), b = Math.sin(x);
+  const c = Math.cos(y), d = Math.sin(y);
+  const ee = Math.cos(z), f = Math.sin(z);
+  return [
+    c * ee, -c * f, d,
+    a * f + b * ee * d, a * ee - b * f * d, -b * c,
+    b * f - a * ee * d, b * ee + a * f * d, a * c,
+  ];
+}
+
+/** XYZ Euler in degrees from a rotation matrix (three.js `setFromRotationMatrix`). */
+export function matToEuler(m: M3): V3 {
+  const y = Math.asin(Math.min(1, Math.max(-1, m[2])));
+  let x: number, z: number;
+  if (Math.abs(m[2]) < 0.9999999) {
+    x = Math.atan2(-m[5], m[8]);
+    z = Math.atan2(-m[1], m[0]);
+  } else {
+    x = Math.atan2(m[7], m[4]);
+    z = 0;
+  }
+  const r = (v: number) => {
+    const deg = v / DEG;
+    return Math.abs(deg) < 1e-9 ? 0 : deg;
+  };
+  return [r(x), r(y), r(z)];
+}
+
+export function mulMat(a: M3, b: M3): M3 {
+  const o = new Array(9).fill(0) as M3;
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) for (let k = 0; k < 3; k++) o[i * 3 + j] += a[i * 3 + k] * b[k * 3 + j];
+  return o;
+}
+
+export function mulMatVec(m: M3, v: readonly number[]): V3 {
+  return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]];
+}
