@@ -53,7 +53,7 @@ export default defineProject({
       license: "Author's Instructables license; linked for reference only, no text or images copied",
     },
   ],
-  camera: { position: [38, 30, 52], target: [0, 15, 0] },
+  camera: { position: [40, 32, 60], target: [0, 15, 0] },
   scene: {
     objects: [
       {
@@ -98,14 +98,14 @@ export default defineProject({
       text: "Measure about one third down from the top of the bottle, just below where the shoulder starts to narrow, and draw a line all the way around with a marker. The top piece becomes the pot, the bottom piece the water tank.",
       tip: "Hold the marker still on a book of the right height and turn the bottle against it for a perfectly level line.",
       ops: [],
-      camera: { position: [20, 24, 28], target: [0, 19, 0] },
+      camera: { position: [28, 27, 46], target: [0, 18, 0] },
     },
     {
       title: "Cut the bottle in two",
       text: "Push the tip of the utility knife through the line to start a slot, then finish the cut around the bottle with scissors, following your mark.",
       warning: "Cut away from your hand and keep fingers clear of the blade. Children should leave the cutting to an adult.",
       ops: [{ type: "cut", target: "bottle", y: 19, gap: 2.5 }],
-      camera: { position: [26, 26, 36], target: [0, 17, 0] },
+      camera: { position: [34, 30, 56], target: [0, 17, 0] },
     },
     {
       title: "Smooth the cut edges",
@@ -117,19 +117,19 @@ export default defineProject({
       text: "Cut a strip of old cotton T-shirt about two centimetres wide and twenty-five long. Wet it, then push one end up through the neck of the top piece so a short tail sits inside the pot and the rest hangs out of the mouth.",
       tip: "Cotton wicks water well; synthetic fabric barely does. Pre-wetting the strip gets the flow started.",
       ops: [],
-      camera: { position: [16, 34, 22], target: [0, 26, 0] },
-    },
-    {
-      title: "Paint the water tank (optional)",
-      text: "Paint the outside of the bottom piece in an opaque colour, or wrap it in paper. Keeping light out of the reservoir stops green algae growing in the water.",
-      ops: [{ type: "paint", target: "bottle.bottom", color: "#4f7a5a", preset: "paint" }],
-      camera: { position: [30, 18, 40], target: [0, 9, 0] },
+      camera: { position: [26, 36, 42], target: [0, 24, 0] },
     },
     {
       title: "Turn the top upside down into the tank",
       text: "Flip the top piece over and sit it in the bottom piece, neck down, so the wick hangs into the tank. The shoulder of the bottle rests on the rim and holds the pot in place.",
-      ops: [{ type: "transform", target: "bottle.top", position: [0, 38.6, 0], rotation: [180, 0, 0] }],
-      camera: { position: [36, 26, 48], target: [0, 13, 0] },
+      ops: [{ type: "transform", target: "bottle.top", position: [0, 38.6, 0], rotation: [180, 0, 0], arc: 9 }],
+      camera: { position: [40, 34, 66], target: [0, 17, 0] },
+    },
+    {
+      title: "Paint the water tank (optional)",
+      text: "Lift the pot out and paint the outside of the bottom piece in an opaque colour, or wrap it in paper. Keeping light out of the reservoir stops green algae growing in the water.",
+      ops: [{ type: "paint", target: "bottle.bottom", color: "#4f7a5a", preset: "paint" }],
+      camera: { position: [32, 24, 50], target: [0, 12, 0] },
     },
     {
       title: "Add water and soil",
@@ -142,7 +142,7 @@ export default defineProject({
       text: "Plant your seedling or sow a few seeds, water the soil once from the top to settle it, and put the planter somewhere bright. Top up the tank whenever the level drops; the wick does the rest.",
       tip: "Herbs such as basil and mint are easy first plants for this planter.",
       ops: [],
-      camera: { position: [42, 34, 56], target: [0, 15, 0] },
+      camera: { position: [44, 36, 64], target: [0, 14, 0] },
     },
   ],
 });

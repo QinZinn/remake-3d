@@ -4,7 +4,7 @@ import { PROJECTS } from "@/content/projects";
 import { rotate3 } from "./math";
 import { applyOp, applySteps, checkOp, extentOf, findObject, frameOf, initialState } from "./ops";
 import { PRIMITIVE_IDS, profileOf, profileRange, sliceProfile } from "./primitives";
-import { ProjectSchema, SceneObjectSchema, type ProjectInput } from "./schema";
+import { ProjectSchema, SceneObjectSchema, SceneOpSchema, type ProjectInput, type SceneOpInput } from "./schema";
 import { planTransition, sampleTransition, stateAtStep } from "./transition";
 
 function project(overrides: Partial<ProjectInput> = {}): ProjectInput {
@@ -29,6 +29,7 @@ function project(overrides: Partial<ProjectInput> = {}): ProjectInput {
 }
 
 const parse = (p: ProjectInput) => ProjectSchema.parse(p);
+const op = (o: SceneOpInput) => SceneOpSchema.parse(o);
 const messages = (p: ProjectInput) => {
   const r = ProjectSchema.safeParse(p);
   return r.success ? [] : r.error.issues.map((i) => i.message);
@@ -139,9 +140,19 @@ describe("ops", () => {
   });
 
   it("transform sets only the given fields", () => {
-    const s = applySteps(p.scene, [{ ops: [{ type: "transform", target: "bottle", rotation: [180, 0, 0] }] }]);
+    const s = applySteps(p.scene, [{ ops: [op({ type: "transform", target: "bottle", rotation: [180, 0, 0] })] }]);
     expect(findObject(s, "bottle")).toMatchObject({ rotation: [180, 0, 0], position: [0, 0, 0], scale: [1, 1, 1] });
-    expect(checkOp(initialState(p.scene), { type: "transform", target: "bottle" })).toMatch(/needs/);
+    expect(checkOp(initialState(p.scene), op({ type: "transform", target: "bottle" }))).toMatch(/needs/);
+  });
+
+  it("transform with arc lifts the part mid-move and lands exactly on target", () => {
+    const pr = parse(project({ steps: [{ title: "Flip", text: "x", ops: [{ type: "transform", target: "bottle", position: [0, 30, 0], rotation: [180, 0, 0], arc: 10 }] }] }));
+    const tr = planTransition(pr, 0, 1);
+    const mid = sampleTransition(tr, tr.duration / 2).items[0];
+    const noArc = parse(project({ steps: [{ title: "Flip", text: "x", ops: [{ type: "transform", target: "bottle", position: [0, 30, 0], rotation: [180, 0, 0] }] }] }));
+    const trNo = planTransition(noArc, 0, 1);
+    expect(mid.position[1] - sampleTransition(trNo, trNo.duration / 2).items[0].position[1]).toBeCloseTo(10);
+    expect(sampleTransition(tr, tr.duration).items[0]).toMatchObject({ position: [0, 30, 0], rotation: [180, 0, 0] });
   });
 
   it("does not mutate the states it is given", () => {

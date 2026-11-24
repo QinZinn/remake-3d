@@ -271,6 +271,14 @@ const transform: OpHandler<"transform"> = {
       scale: op.scale ? ([...op.scale] as V3) : o.scale,
     });
   },
+  frame(prev, next, op, u) {
+    const f = blendStates(prev, next, u);
+    if (op.arc > 0) {
+      const lift = op.arc * Math.sin(Math.PI * u);
+      f.items = f.items.map((it) => (it.id === op.target ? { ...it, position: [it.position[0], it.position[1] + lift, it.position[2]] } : it));
+    }
+    return f;
+  },
 };
 
 export const HANDLERS: { [K in OpType]: OpHandler<K> } = { cut, remove, paint, transform };

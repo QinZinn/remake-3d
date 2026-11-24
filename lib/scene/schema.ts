@@ -105,6 +105,8 @@ export const TransformOp = z.object({
   position: Vec3.optional(),
   rotation: Vec3.optional(),
   scale: Vec3.optional(),
+  /** Lift (cm, world y) at the middle of the move, so a flipped part clears what is below it. */
+  arc: z.number().min(0).default(0),
 });
 
 export const SceneOpSchema = z.discriminatedUnion("type", [CutOp, RemoveOp, PaintOp, TransformOp]);
