@@ -9,7 +9,7 @@
  * handler to `HANDLERS` below. The mapped type makes a missing handler a type error.
  */
 import { PRESET_DEFAULTS } from "./materials";
-import { add3, clamp01, easeOut, eulerToMat, invMat, lerp, lerp3, lerpColor, lerpMat, matToEuler, mulMat, mulMatVec, rotate3, type M3, type V3 } from "./math";
+import { add3, clamp01, easeOut, eulerToMat, invMat, lerp, lerp3, lerpColor, matToEuler, mulMat, mulMatVec, rotate3, type M3, type V3 } from "./math";
 import {
   getPrimitive,
   meshBounds,
@@ -160,6 +160,12 @@ export function worldLinear(state: SceneState, id: string, depth = 0): M3 {
 
 // ---------------------------------------------------------------- frames
 
+type Pose = { rotation: V3; scale: V3 };
+
+function composeChain(chain: readonly Pose[]): M3 {
+  return chain.reduce<M3>((m, link) => mulMat(m, linearOf(link)), [1, 0, 0, 0, 1, 0, 0, 0, 1]);
+}
+
 /** One drawable at one instant, in world space once resolved. */
 export interface RenderItem extends ObjectState {
   key: string;
@@ -174,11 +180,12 @@ export interface RenderItem extends ObjectState {
    */
   basis?: M3;
   /**
-   * How `basis` was built: the parent's world linear transform and the
-   * object's own rotation/scale. Blending interpolates these parts, which
-   * keeps a turning child rigid instead of collapsing a matrix lerp.
+   * How `basis` was built: the local rotation and scale of each ancestor, root
+   * first, then the object's own. Blending interpolates each link and
+   * recomposes, so a turning parent or child stays rigid (a matrix lerp
+   * would collapse it).
    */
-  basisParts?: { parent: M3; rotation: V3; scale: V3 };
+  basisParts?: { chain: Pose[] };
 }
 
 /** Non-object visuals, positioned in the host object's frame. */
@@ -225,7 +232,7 @@ export function resolveFrame(f: Frame): Frame {
         scale: [it.scale[0] * p.scale[0], it.scale[1] * p.scale[1], it.scale[2] * p.scale[2]],
         opacity: it.opacity * p.opacity,
         basis: mulMat(parentLinear, linearOf(it)),
-        basisParts: { parent: parentLinear, rotation: it.rotation, scale: it.scale },
+        basisParts: { chain: [...(p.basisParts?.chain ?? [{ rotation: p.rotation, scale: p.scale }]), { rotation: it.rotation, scale: it.scale }] },
       };
     }
     if (out.parent !== undefined) {
@@ -321,11 +328,11 @@ export function blendFrames(a: Frame, b: Frame, u: number): Frame {
           o.basis = ib.basis ?? linearOf(ib);
           if (pb) o.basisParts = pb;
           else delete o.basisParts;
-        } else if (pa && pb) {
-          // Interpolate the parts: parent transform, then the child's own rotation and scale.
-          const parts = { parent: lerpMat(pa.parent, pb.parent, u), rotation: lerp3(pa.rotation, pb.rotation, u), scale: lerp3(pa.scale, pb.scale, u) };
-          o.basis = mulMat(parts.parent, linearOf(parts));
-          o.basisParts = parts;
+        } else if (pa && pb && pa.chain.length === pb.chain.length) {
+          // Interpolate every link's rotation and scale, then recompose.
+          const chain = pa.chain.map((la, i) => ({ rotation: lerp3(la.rotation, pb.chain[i].rotation, u), scale: lerp3(la.scale, pb.chain[i].scale, u) }));
+          o.basis = composeChain(chain);
+          o.basisParts = { chain };
         } else {
           // One side is not attached: blend the approximate pose and fade out each side's residual.
           const approx = linearOf(o);

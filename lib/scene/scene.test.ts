@@ -357,6 +357,19 @@ describe("add, parent, fill and thread", () => {
     at(180).items.find((i) => i.id === "pin")!.basis!.forEach((v, i) => expect(end[i]).toBeCloseTo(v));
   });
 
+  it("a child of a stretched parent turning 180° stays rigid mid-blend", () => {
+    const at = (deg: number) =>
+      frameOf(
+        stateWith([
+          { id: "tray", primitive: "jar", transform: { rotation: [0, 0, deg], scale: [2, 1, 1] }, material: { preset: "glass" } },
+          { id: "pin", parent: "tray", primitive: "cap", material: { preset: "plastic" } },
+        ]),
+      );
+    const mid = blendFrames(at(0), at(180), 0.5).items.find((i) => i.id === "pin")!.basis!;
+    // Rz(90) · diag(2,1,1) = [[0,-1,0],[2,0,0],[0,0,1]], not diag(0,0,1).
+    [0, -1, 0, 2, 0, 0, 0, 0, 1].forEach((v, i) => expect(mid[i]).toBeCloseTo(v));
+  });
+
   it("an interrupted fill keeps the outgoing level under its own key", () => {
     const pr = parse(
       project({
