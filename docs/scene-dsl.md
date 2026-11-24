@@ -142,6 +142,7 @@ Steps:
 1. Create `lib/scene/primitives/<name>.ts` with the pure shape function (import its params type with `import type`, so the client bundle has no zod).
 2. Add its Zod params schema to `primitives/params.ts` (`PRIMITIVE_PARAMS`), with `.refine` checks for sizes that cannot make a shape.
 3. Register it in `PRIMITIVES` (`primitives/index.ts`) and add a branch to `SceneObjectSchema` (`schema.ts`). A test fails if a registered primitive has no schema branch.
+4. If its params have required fields (no default, like `points` for `solid` and `tube`), add a valid fixture for it in the "has a scene object branch and a params schema for every registered primitive" test in `lib/scene/scene.test.ts`; otherwise that test fails.
 
 ## Player
 

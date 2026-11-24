@@ -2,7 +2,7 @@ import { Euler, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { PROJECTS } from "@/content/projects";
 import { rotate3 } from "./math";
-import { applyOp, applySteps, applyStepsFrom, boundsOf, checkOp, extentOf, findObject, frameOf, fullProfile, initialState, type Frame, type SceneState } from "./ops";
+import { applyOp, applySteps, applyStepsFrom, blendFrames, boundsOf, checkOp, extentOf, findObject, frameOf, fullProfile, initialState, type Frame, type SceneState } from "./ops";
 import { PRIMITIVE_IDS, PRIMITIVES, profileOf, profileProblem, profileRange, sliceProfile, type PrimitiveId } from "./primitives";
 import { PRIMITIVE_PARAMS } from "./primitives/params";
 import { ProjectSchema, SceneObjectSchema, SceneOpSchema, type ProjectInput, type SceneObjectInput, type SceneOpInput } from "./schema";
@@ -340,6 +340,38 @@ describe("add, parent, fill and thread", () => {
     pinAt(back.duration * 0.999).basis!.forEach((v, i) => expect(v).toBeCloseTo(target[i], 2));
     // Child +y stays on the parent's stretched x axis at the end: [-2, 0, 0].
     expect(target[1]).toBeCloseTo(-2);
+  });
+
+  it("a child turning 180° under a stretched parent stays rigid mid-blend", () => {
+    const at = (deg: number) =>
+      frameOf(
+        stateWith([
+          { id: "tray", primitive: "jar", transform: { scale: [2, 1, 1] }, material: { preset: "glass" } },
+          { id: "pin", parent: "tray", primitive: "cap", transform: { rotation: [0, 0, deg] }, material: { preset: "plastic" } },
+        ]),
+      );
+    const mid = blendFrames(at(0), at(180), 0.5).items.find((i) => i.id === "pin")!.basis!;
+    // Exactly the 90° pose: parent [2,1,1] · Rz(90) = [[0,-2,0],[1,0,0],[0,0,1]], not a collapsed diag(0,0,1).
+    [0, -2, 0, 1, 0, 0, 0, 0, 1].forEach((v, i) => expect(mid[i]).toBeCloseTo(v));
+    const end = blendFrames(at(0), at(180), 1).items.find((i) => i.id === "pin")!.basis!;
+    at(180).items.find((i) => i.id === "pin")!.basis!.forEach((v, i) => expect(end[i]).toBeCloseTo(v));
+  });
+
+  it("an interrupted fill keeps the outgoing level under its own key", () => {
+    const pr = parse(
+      project({
+        scene: { objects: [{ id: "tank", primitive: "jar", material: { preset: "glass" } }] },
+        steps: steps([{ type: "fill", target: "tank", id: "water", level: 0.5 }]),
+      }),
+    );
+    const filling = planTransition(pr, 0, 1);
+    const onScreen = sampleTransition(filling, filling.duration * 0.5);
+    const again = planTransition(pr, 0, 1, onScreen);
+    const mid = sampleTransition(again, again.duration / 2);
+    const keys = mid.items.map((i) => i.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    const out = mid.items.find((i) => i.key === "water#out")!;
+    expect(out.clip).toEqual(onScreen.items.find((i) => i.key === "water")!.clip);
   });
 
   it("fill uses a mirrored container's world-bottom end", () => {

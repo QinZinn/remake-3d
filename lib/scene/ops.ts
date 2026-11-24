@@ -173,6 +173,12 @@ export interface RenderItem extends ObjectState {
    * renderer uses it with `position` instead of `rotation`/`scale`.
    */
   basis?: M3;
+  /**
+   * How `basis` was built: the parent's world linear transform and the
+   * object's own rotation/scale. Blending interpolates these parts, which
+   * keeps a turning child rigid instead of collapsing a matrix lerp.
+   */
+  basisParts?: { parent: M3; rotation: V3; scale: V3 };
 }
 
 /** Non-object visuals, positioned in the host object's frame. */
@@ -219,6 +225,7 @@ export function resolveFrame(f: Frame): Frame {
         scale: [it.scale[0] * p.scale[0], it.scale[1] * p.scale[1], it.scale[2] * p.scale[2]],
         opacity: it.opacity * p.opacity,
         basis: mulMat(parentLinear, linearOf(it)),
+        basisParts: { parent: parentLinear, rotation: it.rotation, scale: it.scale },
       };
     }
     if (out.parent !== undefined) {
@@ -308,13 +315,42 @@ export function blendFrames(a: Frame, b: Frame, u: number): Frame {
       if (ib.clip) o.clip = ib.clip;
       else delete o.clip;
       // Attached objects keep an exact transform the whole way (no snap to the approximate pose).
-      if (ia.basis || ib.basis) o.basis = u >= 1 ? (ib.basis ?? linearOf(ib)) : lerpMat(ia.basis ?? linearOf(ia), ib.basis ?? linearOf(ib), u);
-      else delete o.basis;
+      if (ia.basis || ib.basis) {
+        const pa = ia.basisParts, pb = ib.basisParts;
+        if (u >= 1) {
+          o.basis = ib.basis ?? linearOf(ib);
+          if (pb) o.basisParts = pb;
+          else delete o.basisParts;
+        } else if (pa && pb) {
+          // Interpolate the parts: parent transform, then the child's own rotation and scale.
+          const parts = { parent: lerpMat(pa.parent, pb.parent, u), rotation: lerp3(pa.rotation, pb.rotation, u), scale: lerp3(pa.scale, pb.scale, u) };
+          o.basis = mulMat(parts.parent, linearOf(parts));
+          o.basisParts = parts;
+        } else {
+          // One side is not attached: blend the approximate pose and fade out each side's residual.
+          const approx = linearOf(o);
+          const resA = (ia.basis ?? linearOf(ia)).map((v, i) => v - linearOf(ia)[i]);
+          const resB = (ib.basis ?? linearOf(ib)).map((v, i) => v - linearOf(ib)[i]);
+          o.basis = approx.map((v, i) => v + (1 - u) * resA[i] + u * resB[i]) as M3;
+          delete o.basisParts;
+        }
+      } else {
+        delete o.basis;
+        delete o.basisParts;
+      }
       if (ia.reveal !== undefined || ib.reveal !== undefined) o.reveal = lerp(ia.reveal ?? 1, ib.reveal ?? 1, u);
       items.push(o);
     } else items.push({ ...ib, opacity: ib.opacity * u });
   }
-  for (const ia of a.items) if (!used.has(ia)) items.push({ ...ia, opacity: ia.opacity * (1 - u) });
+  // Outgoing items keep their own pose; rename a key the incoming side also uses (an interrupted fill).
+  const taken = new Set(items.map((i) => i.key));
+  for (const ia of a.items) {
+    if (used.has(ia)) continue;
+    let key = ia.key;
+    while (taken.has(key)) key = `${key}#out`;
+    taken.add(key);
+    items.push({ ...ia, key, opacity: ia.opacity * (1 - u) });
+  }
   return { items, effects: u < 0.5 ? a.effects : b.effects };
 }
 
