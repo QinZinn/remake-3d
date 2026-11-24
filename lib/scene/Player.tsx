@@ -265,9 +265,18 @@ function ObjectMesh({ item, source }: { item: RenderItem; source: FrameSource })
     if (!m) return;
     const f = source.get(clock.elapsedTime);
     const it = f.items.find((i) => i.key === item.key) ?? item;
-    m.position.set(...it.position);
-    m.rotation.set(it.rotation[0] * DEG, it.rotation[1] * DEG, it.rotation[2] * DEG, "XYZ");
-    m.scale.set(...it.scale);
+    if (it.basis) {
+      // Attached object: draw its exact composed transform.
+      const [a, b, c, d, e, f, g, h, i] = it.basis;
+      m.matrixAutoUpdate = false;
+      m.matrix.set(a, b, c, it.position[0], d, e, f, it.position[1], g, h, i, it.position[2], 0, 0, 0, 1);
+      m.matrixWorldNeedsUpdate = true;
+    } else {
+      m.matrixAutoUpdate = true;
+      m.position.set(...it.position);
+      m.rotation.set(it.rotation[0] * DEG, it.rotation[1] * DEG, it.rotation[2] * DEG, "XYZ");
+      m.scale.set(...it.scale);
+    }
     material.color.set(it.color);
     material.opacity = it.opacity;
     m.visible = it.opacity > 0.01;

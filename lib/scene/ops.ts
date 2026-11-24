@@ -144,11 +144,18 @@ function update(state: SceneState, id: string, patch: Partial<ObjectState>): Sce
   return replace(state, id, [{ ...o, ...patch }]);
 }
 
-/** World rotation matrix of an object, composing its parents. */
-export function worldRotation(state: SceneState, id: string, depth = 0): M3 {
+/** Rotation × scale of one object (its local linear transform). */
+export function linearOf(o: Pick<ObjectState, "rotation" | "scale">): M3 {
+  const r = eulerToMat(o.rotation);
+  const [sx, sy, sz] = o.scale;
+  return [r[0] * sx, r[1] * sy, r[2] * sz, r[3] * sx, r[4] * sy, r[5] * sz, r[6] * sx, r[7] * sy, r[8] * sz];
+}
+
+/** World linear transform (rotation and scale, parents included) of an object. */
+export function worldLinear(state: SceneState, id: string, depth = 0): M3 {
   const o = findObject(state, id)!;
-  const own = eulerToMat(o.rotation);
-  return o.parent && depth < 32 && findObject(state, o.parent) ? mulMat(worldRotation(state, o.parent, depth + 1), own) : own;
+  const own = linearOf(o);
+  return o.parent && depth < 32 && findObject(state, o.parent) ? mulMat(worldLinear(state, o.parent, depth + 1), own) : own;
 }
 
 // ---------------------------------------------------------------- frames
@@ -160,6 +167,12 @@ export interface RenderItem extends ObjectState {
   clip?: { y: number; keep: "above" | "below" };
   /** 0..1 of the shape drawn along its length (tubes). */
   reveal?: number;
+  /**
+   * Exact world rotation × scale for an attached object (row-major 3×3). Under a
+   * non-uniformly scaled parent this can't be written as Euler + scale, so the
+   * renderer uses it with `position` instead of `rotation`/`scale`.
+   */
+  basis?: M3;
 }
 
 /** Non-object visuals, positioned in the host object's frame. */
@@ -196,14 +209,16 @@ export function resolveFrame(f: Frame): Frame {
     const parentItem = it.parent ? byId.get(it.parent) : undefined;
     if (parentItem && parentItem !== it && depth < 32) {
       const p = resolve(parentItem, depth + 1);
+      const parentLinear = p.basis ?? linearOf(p);
       const pr = eulerToMat(p.rotation);
-      const local: V3 = [it.position[0] * p.scale[0], it.position[1] * p.scale[1], it.position[2] * p.scale[2]];
       out = {
         ...it,
-        position: add3(p.position, mulMatVec(pr, local)),
+        position: add3(p.position, mulMatVec(parentLinear, it.position)),
+        // Approximate pose for blending; `basis` is what gets drawn.
         rotation: matToEuler(mulMat(pr, eulerToMat(it.rotation))),
         scale: [it.scale[0] * p.scale[0], it.scale[1] * p.scale[1], it.scale[2] * p.scale[2]],
         opacity: it.opacity * p.opacity,
+        basis: mulMat(parentLinear, linearOf(it)),
       };
     }
     if (out.parent !== undefined) {
@@ -284,13 +299,16 @@ export function blendFrames(a: Frame, b: Frame, u: number): Frame {
   const used = new Set<RenderItem>();
   const items: RenderItem[] = [];
   for (const ib of b.items) {
-    const ia = a.items.find((x) => !used.has(x) && x.key === ib.key) ?? a.items.find((x) => !used.has(x) && x.id === ib.id);
+    // Only pose-match compatible items: a clipped half and a whole object cross-fade instead.
+    const compatible = (x: RenderItem) => !used.has(x) && (x.clip?.keep ?? null) === (ib.clip?.keep ?? null);
+    const ia = a.items.find((x) => compatible(x) && x.key === ib.key) ?? a.items.find((x) => compatible(x) && x.id === ib.id);
     if (ia) {
       used.add(ia);
       const o: RenderItem = { ...blendObject(ia, ib, u), key: ib.key };
-      const clip = u < 0.5 ? ia.clip : ib.clip;
-      if (clip) o.clip = clip;
+      if (ib.clip) o.clip = ib.clip;
       else delete o.clip;
+      if (u >= 1 && ib.basis) o.basis = ib.basis;
+      else delete o.basis;
       if (ia.reveal !== undefined || ib.reveal !== undefined) o.reveal = lerp(ia.reveal ?? 1, ib.reveal ?? 1, u);
       items.push(o);
     } else items.push({ ...ib, opacity: ib.opacity * u });
@@ -443,7 +461,8 @@ export function fillId(op: OpOf<"fill">): string {
 function fillRange(state: SceneState, op: OpOf<"fill">): { range: [number, number]; upsideDown: boolean } {
   const o = findObject(state, op.target)!;
   const [lo, hi] = extentOf(o);
-  const up = mulMatVec(worldRotation(state, op.target), [0, 1, 0]);
+  // The container's local +y in the world, including mirrored scales of it and its parents.
+  const up = mulMatVec(worldLinear(state, op.target), [0, 1, 0]);
   const upsideDown = up[1] < 0;
   const depth = (hi - lo) * op.level;
   return { range: upsideDown ? [hi - depth, hi] : [lo, lo + depth], upsideDown };

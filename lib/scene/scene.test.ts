@@ -288,6 +288,22 @@ describe("add, parent, fill and thread", () => {
     expect(bead.parent).toBeUndefined();
   });
 
+  it("a rotated child keeps a non-uniformly scaled parent's axes", () => {
+    const s0 = stateWith([{ id: "tray", primitive: "jar", transform: { scale: [2, 1, 1] }, material: { preset: "glass" } }]);
+    const s = applyOp(s0, op({ type: "add", object: { id: "pin", parent: "tray", primitive: "cap", transform: { rotation: [0, 0, 90] }, material: { preset: "plastic" } } }));
+    const pin = frameOf(s).items.find((i) => i.id === "pin")!;
+    // Child-local +y -> parent x (rotation) -> doubled by the parent's x scale.
+    const y = [pin.basis![1], pin.basis![4], pin.basis![7]];
+    expect(y[0]).toBeCloseTo(-2);
+    expect(y[1]).toBeCloseTo(0);
+  });
+
+  it("fill uses a mirrored container's world-bottom end", () => {
+    const s0 = stateWith([{ id: "jar", primitive: "jar", transform: { position: [0, 12, 0], scale: [1, -1, 1] }, material: { preset: "glass" } }]);
+    const s = applyOp(s0, op({ type: "fill", target: "jar", id: "water", level: 0.5 }));
+    expect(extentOf(findObject(s, "water")!)).toEqual([6, 12]);
+  });
+
   it("children move with the parent and are removed with it; a parent with children cannot be cut", () => {
     let s = applyOp(base(), op({ type: "thread", target: "pot", id: "wick", path: [[0, 20, 0], [0, 35, 0]] }));
     s = applyOp(s, op({ type: "transform", target: "pot", position: [10, 30, 0] }));
@@ -356,6 +372,17 @@ describe("transitions", () => {
     const back = planTransition(p, 1, 0, onScreen);
     expect(sampleTransition(back, 0)).toEqual(onScreen);
     expect(sampleTransition(back, back.duration)).toEqual(frameOf(stateAtStep(p, 0)));
+  });
+
+  it("an interruption cross-fades a clipped half instead of morphing it into the whole object", () => {
+    const cutting = planTransition(p, 0, 1);
+    const onScreen = sampleTransition(cutting, cutting.duration * 0.9); // two clipped halves
+    const back = planTransition(p, 1, 0, onScreen);
+    const mid = sampleTransition(back, back.duration / 2);
+    const whole = mid.items.find((i) => i.key === "bottle")!;
+    expect(whole.clip).toBeUndefined();
+    expect(whole.opacity).toBeLessThan(1); // fading in, not popped in
+    expect(mid.items.filter((i) => i.clip).length).toBe(2); // both halves fading out
   });
 
   it("clamps step indices outside the project", () => {
