@@ -101,7 +101,7 @@ export default defineProject({
   steps: [
     {
       title: "Wash the jars and fold up the cardboard cradle",
-      text: "Wash two intact glass jars in warm soapy water, remove their lids and paper labels, and inspect for cracks. Fold up the four 3.2 cm cardboard tray walls, secure the corners with hot glue or masking tape, and glue a central cardboard strip so the jars cannot bump together.",
+      text: "Wash two intact glass jars in warm soapy water, remove their lids and paper labels, and inspect for cracks. Cut a 27.4 × 16.9 cm corrugated cardboard blank, mark a 3.2 cm border around all four edges, and cut away the four corner squares. Fold up the four 3.2 cm cardboard tray walls, secure the corners with hot glue or masking tape, then cut a 9.7 × 3.2 cm centre divider and glue it across the middle so the jars cannot bump together.",
       warning: "Use only intact, uncracked glass jars. Never cut, drill, or heat glass.",
       ops: [
         { type: "remove", target: "lid-left", away: [-4, 8, 0], duration: 0.35 },

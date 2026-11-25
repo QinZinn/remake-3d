@@ -119,7 +119,7 @@ export default defineProject({
   steps: [
     {
       title: "Cut panels and glue the back and side walls",
-      text: "Measure and cut a 24 × 15 cm base, an 18 cm tall back panel, two 14 cm side walls, two internal dividers (14 cm and 10 cm tall), and a 6.5 cm front lip from dry corrugated cardboard. Hot-glue the tall back wall and both side walls squarely upright onto the base.",
+      text: "Measure and cut seven panels from dry corrugated cardboard: a 24 × 15 cm base, a 24 × 18 cm back wall, two 14.1 × 14 cm side walls (14.1 cm deep × 14 cm tall), two internal dividers (23.1 × 14 cm and 23.1 × 10 cm), and a 24 × 6.5 cm front lip. Hot-glue the tall back wall and both side walls squarely upright onto the base.",
       warning: "Cut thick corrugated cardboard over a scrap board using a straightedge and keep your guide hand behind the utility knife.",
       ops: [
         { type: "transform", target: "back-wall", rotation: [0, 0, 0], pivot: [0, 0, 0], duration: 0.7 },

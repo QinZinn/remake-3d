@@ -62,7 +62,7 @@ export default defineProject({
       publisher: "Oregon State University Extension",
       url: "https://extension.oregonstate.edu/imported-publication/cycle-when-gardening",
       license: "Publisher copyright (reference only)",
-      note: "Supports reusing worn fabric strips in the garden to tie up stems without cutting into bark or soft tissue.",
+      note: "General inspiration for repurposing old household fabric in the garden (described there as a plant cover rather than stem ties).",
     },
     {
       title: "Shop Waste-Free with Reusable T-Shirt Bags",
