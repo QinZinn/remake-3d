@@ -154,6 +154,41 @@ describe("shape validation", () => {
     const prof = profileOf("bottle", params("bottle", { radius: 0.5, neckRadius: 0.2, shoulderHeight: 3 }));
     expect(prof.every(([r]) => r >= 0)).toBe(true);
   });
+
+  it("computes bounds for an extruded shape with bevel and holes", () => {
+    const s = stateWith([
+      {
+        id: "washer",
+        primitive: "extrude",
+        params: {
+          points: [
+            [-2, -2],
+            [2, -2],
+            [2, 2],
+            [-2, 2],
+          ],
+          holes: [
+            [
+              [-0.5, -0.5],
+              [0.5, -0.5],
+              [0.5, 0.5],
+              [-0.5, 0.5],
+            ],
+          ],
+          depth: 0.4,
+          bevel: 0.1,
+        },
+        material: { preset: "aluminium" },
+      },
+    ]);
+    const bb = boundsOf(findObject(s, "washer")!);
+    expect(bb.min[0]).toBeCloseTo(-2.1);
+    expect(bb.min[1]).toBeCloseTo(-2.1);
+    expect(bb.min[2]).toBeCloseTo(-0.3);
+    expect(bb.max[0]).toBeCloseTo(2.1);
+    expect(bb.max[1]).toBeCloseTo(2.1);
+    expect(bb.max[2]).toBeCloseTo(0.3);
+  });
 });
 
 describe("primitives", () => {

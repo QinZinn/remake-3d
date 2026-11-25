@@ -14,7 +14,7 @@
 import { AdaptiveDpr, ContactShadows, Environment, Lightformer, OrbitControls, PerformanceMonitor } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plane, Vector3, type Group, type Mesh } from "three";
+import { ACESFilmicToneMapping, DoubleSide, FrontSide, Plane, Vector3, type Group, type Mesh } from "three";
 import { clamp01, easeInOut } from "./math";
 import type { Effect, Frame, RenderItem } from "./ops";
 import type { Project } from "./schema";
@@ -72,6 +72,17 @@ function keysOf(f: Frame) {
   return [...f.items.map((i) => `${i.key}|${i.primitive}|${i.preset}|${i.slice?.join(",") ?? ""}|${i.clip ? 1 : 0}`), ...f.effects.map((e) => e.key)].join(";");
 }
 
+/** Pull camera back gently on narrow viewports so wide objects never clip horizontally. */
+function responsiveCameraPosition(position: readonly number[], target: readonly number[], aspect: number): Vector3 {
+  const pos = new Vector3(...position);
+  const tgt = new Vector3(...target);
+  if (aspect < 1.08) {
+    const pull = Math.min(1.52, 1.08 / Math.max(0.62, aspect));
+    pos.sub(tgt).multiplyScalar(pull).add(tgt);
+  }
+  return pos;
+}
+
 export default function Player({ project, step, onStepChange, speed = 1, record = false, className }: PlayerProps) {
   const [playing, setPlaying] = useState(false);
   const [settled, setSettled] = useState(true);
@@ -127,9 +138,16 @@ export default function Player({ project, step, onStepChange, speed = 1, record 
       <div className="relative min-h-0 flex-1">
         <Canvas
           frameloop="demand"
+          shadows
           dpr={dpr}
           camera={{ position: initialCam.position, fov: 35, near: 0.5, far: 1000 }}
-          gl={{ localClippingEnabled: true, antialias: true, preserveDrawingBuffer: record }}
+          gl={{
+            localClippingEnabled: true,
+            antialias: true,
+            preserveDrawingBuffer: record,
+            toneMapping: ACESFilmicToneMapping,
+            toneMappingExposure: 1.05,
+          }}
           onCreated={({ gl }) => {
             // Refraction through PET/glass renders the scene behind at half resolution.
             gl.transmissionResolutionScale = 0.5;
@@ -137,24 +155,42 @@ export default function Player({ project, step, onStepChange, speed = 1, record 
         >
           <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(MAX_DPR)} />
           <AdaptiveDpr pixelated />
-          <color attach="background" args={["#eef3ef"]} />
-          <ambientLight intensity={0.35} />
-          <directionalLight position={[20, 40, 25]} intensity={1.6} />
-          <Environment resolution={128}>
-            <Lightformer intensity={2.2} position={[0, 30, -20]} scale={[60, 20, 1]} />
-            <Lightformer intensity={1.4} position={[-30, 15, 10]} rotation-y={Math.PI / 2} scale={[30, 10, 1]} />
-            <Lightformer intensity={1.4} position={[30, 15, 10]} rotation-y={-Math.PI / 2} scale={[30, 10, 1]} />
-            <Lightformer intensity={0.8} color="#ffd9a8" position={[0, -10, 20]} scale={[40, 10, 1]} />
+          <color attach="background" args={["#edf2ee"]} />
+          <hemisphereLight args={["#fafdfb", "#cfd7d1", 0.65]} />
+          <directionalLight
+            position={[24, 46, 30]}
+            intensity={1.65}
+            color="#fffcf5"
+            castShadow
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+            shadow-camera-left={-38}
+            shadow-camera-right={38}
+            shadow-camera-top={38}
+            shadow-camera-bottom={-38}
+            shadow-camera-near={5}
+            shadow-camera-far={130}
+            shadow-bias={-0.0004}
+            shadow-normalBias={0.04}
+          />
+          <directionalLight position={[-26, 20, -18]} intensity={0.5} color="#e2eefb" />
+          <Environment resolution={256}>
+            <Lightformer intensity={2.6} position={[0, 32, -16]} rotation-x={Math.PI / 2} scale={[60, 30, 1]} />
+            <Lightformer intensity={2.2} position={[0, 26, 26]} scale={[44, 18, 1]} />
+            <Lightformer intensity={1.7} position={[-32, 16, 12]} rotation-y={Math.PI / 2} scale={[34, 14, 1]} />
+            <Lightformer intensity={1.7} position={[32, 16, 12]} rotation-y={-Math.PI / 2} scale={[34, 14, 1]} />
+            <Lightformer intensity={1.1} color="#fff1dc" position={[0, -10, 22]} scale={[46, 12, 1]} />
           </Environment>
           <SceneView source={source} onProgress={setProgress} onSettled={() => setSettled(true)} />
-          {/* Shadows are drawn once when a step settles, not every frame. */}
-          <ContactShadows key={`${step}:${settled}`} frames={1} position={[0, -0.01, 0]} opacity={0.45} scale={70} blur={2.4} far={40} resolution={256} />
-          <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, 0]}>
+          {/* Soft ambient occlusion contact shadow drawn once when a step settles. */}
+          <ContactShadows key={`${step}:${settled}`} frames={1} position={[0, -0.006, 0]} opacity={0.34} scale={64} blur={2.1} far={36} resolution={256} />
+          {/* Subtle studio ground plane receiving soft directional shadows. */}
+          <mesh receiveShadow rotation-x={-Math.PI / 2} position={[0, -0.02, 0]}>
             <circleGeometry args={[400, 64]} />
-            <meshBasicMaterial color="#e6ede8" toneMapped={false} />
+            <meshStandardMaterial color="#e6ede8" roughness={0.96} metalness={0} />
           </mesh>
-          <fog attach="fog" args={["#eef3ef", 120, 320]} />
-          <OrbitControls makeDefault enableDamping minDistance={12} maxDistance={140} maxPolarAngle={Math.PI * 0.49} target={initialCam.target} />
+          <fog attach="fog" args={["#edf2ee", 125, 320]} />
+          <OrbitControls makeDefault enableDamping minDistance={10} maxDistance={160} maxPolarAngle={Math.PI * 0.49} target={initialCam.target} />
           <CameraRig position={cam.position} target={cam.target} stepKey={step} />
         </Canvas>
       </div>
@@ -253,12 +289,15 @@ function ObjectMesh({ item, source }: { item: RenderItem; source: FrameSource })
   const geometry = useMemo(() => buildGeometry(item), [item.primitive, item.params, item.slice]); // eslint-disable-line react-hooks/exhaustive-deps
   const material = useMemo(() => buildMaterial(item.preset), [item.preset]);
   const clipPlane = useMemo(() => new Plane(), []);
+  const transmissive = item.preset === "pet" || item.preset === "glass";
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => material.dispose(), [material]);
   useEffect(() => {
     material.clippingPlanes = item.clip ? [clipPlane] : null;
+    // Closed thickened glass/PET shells refract cleanly with FrontSide; keep DoubleSide while clipped.
+    material.side = transmissive && !item.clip ? FrontSide : DoubleSide;
     material.needsUpdate = true;
-  }, [material, clipPlane, item.clip]);
+  }, [material, clipPlane, item.clip, transmissive]);
 
   useFrame(({ clock }) => {
     const m = mesh.current;
@@ -301,7 +340,7 @@ function ObjectMesh({ item, source }: { item: RenderItem; source: FrameSource })
     }
   });
 
-  return <mesh ref={mesh} geometry={geometry} material={material} />;
+  return <mesh ref={mesh} geometry={geometry} material={material} castShadow={!transmissive} receiveShadow={!transmissive} />;
 }
 
 function EffectMesh({ effect, source }: { effect: Effect; source: FrameSource }) {
@@ -337,22 +376,35 @@ function EffectMesh({ effect, source }: { effect: Effect; source: FrameSource })
 
 function CameraRig({ position, target, stepKey }: { position: readonly number[]; target: readonly number[]; stepKey: number }) {
   const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
   const invalidate = useThree((s) => s.invalidate);
   const controls = useThree((s) => s.controls) as unknown as { target: Vector3; update(): void } | null;
   const anim = useRef<{ fromPos: Vector3; fromTarget: Vector3; toPos: Vector3; toTarget: Vector3; start: number | null } | null>(null);
+  const initialized = useRef(false);
+  const aspect = size.width / Math.max(1, size.height);
 
   useEffect(() => {
     if (!controls) return;
+    const toPos = responsiveCameraPosition(position, target, aspect);
+    const toTarget = new Vector3(...target);
+    if (!initialized.current) {
+      initialized.current = true;
+      camera.position.copy(toPos);
+      controls.target.copy(toTarget);
+      controls.update();
+      invalidate();
+      return;
+    }
     anim.current = {
       fromPos: camera.position.clone(),
       fromTarget: controls.target.clone(),
-      toPos: new Vector3(...position),
-      toTarget: new Vector3(...target),
+      toPos,
+      toTarget,
       start: null,
     };
     invalidate();
-    // Only re-aim when the step (or its camera) changes, not on every render.
-  }, [stepKey, controls, position[0], position[1], position[2], target[0], target[1], target[2]]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Only re-aim when the step, camera, or viewport aspect bucket changes.
+  }, [stepKey, controls, Math.round(aspect * 20), position[0], position[1], position[2], target[0], target[1], target[2]]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useFrame(({ clock }) => {
     const a = anim.current;

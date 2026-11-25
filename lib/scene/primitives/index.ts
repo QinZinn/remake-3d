@@ -6,6 +6,7 @@ import { bottle } from "./bottle";
 import { box } from "./box";
 import { can } from "./can";
 import { cap } from "./cap";
+import { extrude } from "./extrude";
 import { jar } from "./jar";
 import { sleeve } from "./sleeve";
 import { solid } from "./solid";
@@ -15,7 +16,7 @@ import type { Bounds, LatheDef, MeshDef, PrimitiveDef, ProfilePoint } from "./ty
 export type { Bounds, LatheDef, MeshDef, PrimitiveDef, ProfilePoint } from "./types";
 
 /** Add a new primitive here, in `PRIMITIVE_PARAMS` (params.ts) and in `SceneObjectSchema`. */
-export const PRIMITIVES = { bottle, jar, can, cap, sleeve, solid, tube, box } as const;
+export const PRIMITIVES = { bottle, jar, can, cap, sleeve, solid, tube, box, extrude } as const;
 
 export type PrimitiveId = keyof typeof PRIMITIVES;
 export const PRIMITIVE_IDS = Object.keys(PRIMITIVES) as [PrimitiveId, ...PrimitiveId[]];

@@ -1,19 +1,23 @@
 import type { CapParams } from "./params";
-import { defineLathe, type ProfilePoint } from "./types";
+import { defineLathe } from "./types";
 
-/** Screw cap, open side down. */
+/** Screw cap, open side down, with subtle lower bead and rounded top edge. */
 export const cap = defineLathe<CapParams>({
   id: "cap",
   label: "Cap",
   profile(p) {
-    const pts: ProfilePoint[] = [];
-    const ridges = 10;
-    pts.push([p.radius * 0.92, 0]);
-    for (let i = 0; i < ridges; i++) {
-      const y = (p.height * 0.85 * (i + 0.5)) / ridges;
-      pts.push([i % 2 ? p.radius : p.radius * 1.03, y]);
-    }
-    pts.push([p.radius, p.height * 0.9], [p.radius * 0.9, p.height], [0, p.height]);
-    return pts;
+    const r = p.radius;
+    const h = p.height;
+    return [
+      [r * 0.985, 0],
+      [r * 1.02, h * 0.09],
+      [r * 1.02, h * 0.2],
+      [r, h * 0.27],
+      [r, h * 0.78],
+      [r * 0.97, h * 0.89],
+      [r * 0.9, h * 0.97],
+      [r * 0.82, h],
+      [0, h],
+    ];
   },
 });

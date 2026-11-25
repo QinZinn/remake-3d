@@ -57,7 +57,7 @@ Write step text in your own words. Cite only URLs you have opened, with their li
 ```ts
 {
   id: "bottle",                     // lower-case, dot-separated segments
-  primitive: "bottle",              // bottle | jar | can | cap | sleeve | solid | tube | box
+  primitive: "bottle",              // bottle | jar | can | cap | sleeve | solid | tube | box | extrude
   params: { height: 30, radius: 5 },// per primitive; most fields have defaults
   parent?: "tray",                  // transform is relative to this object (declared earlier)
   transform?: { position?, rotation?, scale? },
@@ -138,7 +138,7 @@ Rules: `apply` and `frame` must be pure and deterministic (no `Date`, no `Math.r
 There are two kinds:
 
 - **Lathe** (`defineLathe`): a solid of revolution with `profile(params)` returning `[radius, y]` points from the base centre up, y non-decreasing, starting at y = 0. `cut` and `fill` work only on lathes, because a lathe splits exactly by slicing its profile. Current lathes: bottle, jar, can, cap, sleeve, solid.
-- **Mesh** (`defineMesh`): any other shape, with `bounds(params)` for its local box. Its three.js geometry goes in `MESH_GEOMETRY` in `three.ts`; the mapped type makes a missing entry a type error. Current meshes: tube, box.
+- **Mesh** (`defineMesh`): any other shape, with `bounds(params)` for its local box. Its three.js geometry goes in `MESH_GEOMETRY` in `three.ts`; the mapped type makes a missing entry a type error. Current meshes: tube, box, extrude.
 
 Steps:
 
