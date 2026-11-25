@@ -57,7 +57,7 @@ Write step text in your own words. Cite only URLs you have opened, with their li
 ```ts
 {
   id: "bottle",                     // lower-case, dot-separated segments
-  primitive: "bottle",              // bottle | jar | can | cap | sleeve | solid | tube
+  primitive: "bottle",              // bottle | jar | can | cap | sleeve | solid | tube | box
   params: { height: 30, radius: 5 },// per primitive; most fields have defaults
   parent?: "tray",                  // transform is relative to this object (declared earlier)
   transform?: { position?, rotation?, scale? },
@@ -70,6 +70,8 @@ Write step text in your own words. Cite only URLs you have opened, with their li
 Material presets: `pet`, `glass`, `aluminium`, `plastic`, `cardboard`, `fabric`, `soil`, `water`, `wood`, `paint`. Defaults are in `lib/scene/materials.ts`; the look is in `lib/scene/three.ts`. Materials are opaque unless the object is fading, because three.js only shows opaque objects through PET and glass.
 
 **Sizes are validated.** Each primitive's params schema rejects combinations that cannot make a shape (for example a 10 cm bottle that keeps the default 8 cm shoulder). On top of that, `pnpm build` checks every lathe object's profile: y never goes down, no negative radius, and it starts at y = 0. The error names the object and `scene.objects.<i>.params`.
+
+A `box` takes `width`, `height` and `depth`. Its origin is the centre of the bottom face, like the lathe primitives.
 
 **Parents.** A child's transform is relative to its parent, so it moves, flips and fades with it. The renderer composes world transforms (`resolveFrame` in `ops.ts`). `remove` removes the children too, and `cut` refuses an object that has children.
 
@@ -88,7 +90,8 @@ Every op has `type`, an optional `duration` (seconds) and, except `add`, a `targ
 | `cut` | `y`, `gap = 1.5`, `parts?: {top, bottom}` | Replaces the target with `<target>.top` and `<target>.bottom`, splitting its lathe profile at local height `y`. The animation draws a cut line around the object, then shows two clipping-plane halves while the top lifts by `gap`. Parts can be cut again (`bottle.top.top`). |
 | `remove` | `away = [18, 6, 0]` | Removes the target; it slides by `away` and fades out. |
 | `paint` | `color`, `opacity?`, `preset?` | Tweens the colour; can switch to an opaque preset such as `paint`. |
-| `transform` | `position?`, `rotation?`, `scale?`, `arc = 0` | Sets an absolute pose. Rotation turns about the middle of the object, and `arc` lifts it mid-move so a flipped part clears what is below. Children come along. |
+| `transform` | `position?`, `rotation?`, `scale?`, `pivot?`, `arc = 0` | Sets an absolute pose. Rotation turns about the middle of the object by default. Set a local `pivot` to fold around an edge, or use `arc` to lift a part mid-move. Children come along. |
+| `attach` | `target`, `parent`, `transform` | Moves an existing object to a pose relative to an existing parent. The scene rejects parent cycles. The attached object keeps its id and follows the parent in later steps. |
 | `add` | `object` (a full scene object, optional `parent`) | Brings a new object into the scene; it fades in. |
 | `fill` | `id?` (default `<target>.fill`), `level = 0.8`, `inset = 0.94`, `material = soil` | Fills a lathe container to `level` of its height, from whichever end is lowest in the world (so an upside-down pot fills from its neck). Creates a `solid` child of the container; it rises behind a moving clipping plane. |
 | `thread` | `id`, `path` (≥ 2 points in the target's frame), `radius = 0.3`, `material = fabric` | Creates a `tube` child of the target along the path (a wick, string or wire); it grows from the first point to the last. |
@@ -135,7 +138,7 @@ Rules: `apply` and `frame` must be pure and deterministic (no `Date`, no `Math.r
 There are two kinds:
 
 - **Lathe** (`defineLathe`): a solid of revolution with `profile(params)` returning `[radius, y]` points from the base centre up, y non-decreasing, starting at y = 0. `cut` and `fill` work only on lathes, because a lathe splits exactly by slicing its profile. Current lathes: bottle, jar, can, cap, sleeve, solid.
-- **Mesh** (`defineMesh`): any other shape, with `bounds(params)` for its local box. Its three.js geometry goes in `MESH_GEOMETRY` in `three.ts`; the mapped type makes a missing entry a type error. Current mesh: tube.
+- **Mesh** (`defineMesh`): any other shape, with `bounds(params)` for its local box. Its three.js geometry goes in `MESH_GEOMETRY` in `three.ts`; the mapped type makes a missing entry a type error. Current meshes: tube, box.
 
 Steps:
 

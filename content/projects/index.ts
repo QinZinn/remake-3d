@@ -4,9 +4,29 @@
  * are statically generated from this list) and in `pnpm test`.
  */
 import { ProjectSchema, type Project, type ProjectInput } from "@/lib/scene/schema";
+import bottleCapMosaic from "./bottle-cap-mosaic";
+import cardboardDeskTray from "./cardboard-desk-tray";
+import glassBottleBudVase from "./glass-bottle-bud-vase";
+import glassJarHardwareSorter from "./glass-jar-hardware-sorter";
+import milkCartonSeedlingPot from "./milk-carton-seedling-pot";
+import newspaperSeedPot from "./newspaper-seed-pot";
+import petBottleScoop from "./pet-bottle-scoop";
 import petSelfWateringPlanter from "./pet-self-watering-planter";
+import steelCanPencilCup from "./steel-can-pencil-cup";
+import tShirtNoSewTote from "./t-shirt-no-sew-tote";
 
-const RAW: ProjectInput[] = [petSelfWateringPlanter];
+const RAW: ProjectInput[] = [
+  petSelfWateringPlanter,
+  cardboardDeskTray,
+  tShirtNoSewTote,
+  steelCanPencilCup,
+  glassJarHardwareSorter,
+  bottleCapMosaic,
+  petBottleScoop,
+  milkCartonSeedlingPot,
+  glassBottleBudVase,
+  newspaperSeedPot,
+];
 
 function load(raw: ProjectInput[]): Project[] {
   const slugs = new Set<string>();

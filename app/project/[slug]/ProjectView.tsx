@@ -84,7 +84,8 @@ export default function ProjectView({ project }: { project: Project }) {
                   <span className="text-emerald-700">•</span>
                   <span>
                     {labelOf(m.id)}
-                    {m.unit ? <span className="text-stone-500"> — {m.unit}</span> : m.qty > 1 ? <span className="text-stone-500"> × {m.qty}</span> : null}
+                    {m.qty !== 1 && <span className="text-stone-500"> × {m.qty}</span>}
+                    {m.unit && <span className="text-stone-500"> — {m.unit}</span>}
                     {m.optional && <span className="ml-1 text-xs text-stone-400">(optional)</span>}
                   </span>
                 </li>

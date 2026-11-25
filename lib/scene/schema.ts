@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { MATERIAL_IDS, TOOL_IDS } from "@/lib/taxonomy";
-import { BottleParams, CanParams, CapParams, JarParams, SleeveParams, SolidParams, TubeParams } from "./primitives/params";
+import { BottleParams, BoxParams, CanParams, CapParams, JarParams, SleeveParams, SolidParams, TubeParams } from "./primitives/params";
 import { validateSteps } from "./validate";
 
 // ---------------------------------------------------------------- basics
@@ -55,6 +55,7 @@ export const SceneObjectSchema = z.discriminatedUnion("primitive", [
   z.object({ ...objectBase, primitive: z.literal("sleeve"), params: SleeveParams.default(SleeveParams.parse({})) }),
   z.object({ ...objectBase, primitive: z.literal("solid"), params: SolidParams }),
   z.object({ ...objectBase, primitive: z.literal("tube"), params: TubeParams }),
+  z.object({ ...objectBase, primitive: z.literal("box"), params: BoxParams.default(BoxParams.parse({})) }),
 ]);
 export type SceneObject = z.infer<typeof SceneObjectSchema>;
 export type SceneObjectInput = z.input<typeof SceneObjectSchema>;
@@ -105,8 +106,18 @@ export const TransformOp = z.object({
   position: Vec3.optional(),
   rotation: Vec3.optional(),
   scale: Vec3.optional(),
+  /** Local pivot for rotation and scale. Defaults to the centre of the object's bounds. */
+  pivot: Vec3.optional(),
   /** Lift (cm, world y) at the middle of the move, so a flipped part clears what is below it. */
   arc: z.number().min(0).default(0),
+});
+
+/** Move an existing object to a pose relative to a parent. */
+export const AttachOp = z.object({
+  type: z.literal("attach"),
+  ...opBase,
+  parent: ObjectId,
+  transform: Transform,
 });
 
 /** Bring a new object into the scene (it fades in). */
@@ -144,7 +155,7 @@ export const ThreadOp = z.object({
   material: RenderMaterial.default({ preset: "fabric" }),
 });
 
-export const SceneOpSchema = z.discriminatedUnion("type", [CutOp, RemoveOp, PaintOp, TransformOp, AddOp, FillOp, ThreadOp]);
+export const SceneOpSchema = z.discriminatedUnion("type", [CutOp, RemoveOp, PaintOp, TransformOp, AttachOp, AddOp, FillOp, ThreadOp]);
 export type SceneOp = z.infer<typeof SceneOpSchema>;
 export type SceneOpInput = z.input<typeof SceneOpSchema>;
 export type OpType = SceneOp["type"];

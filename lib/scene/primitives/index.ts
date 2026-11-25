@@ -3,6 +3,7 @@
  * (see lib/scene/three.ts).
  */
 import { bottle } from "./bottle";
+import { box } from "./box";
 import { can } from "./can";
 import { cap } from "./cap";
 import { jar } from "./jar";
@@ -14,7 +15,7 @@ import type { Bounds, LatheDef, MeshDef, PrimitiveDef, ProfilePoint } from "./ty
 export type { Bounds, LatheDef, MeshDef, PrimitiveDef, ProfilePoint } from "./types";
 
 /** Add a new primitive here, in `PRIMITIVE_PARAMS` (params.ts) and in `SceneObjectSchema`. */
-export const PRIMITIVES = { bottle, jar, can, cap, sleeve, solid, tube } as const;
+export const PRIMITIVES = { bottle, jar, can, cap, sleeve, solid, tube, box } as const;
 
 export type PrimitiveId = keyof typeof PRIMITIVES;
 export const PRIMITIVE_IDS = Object.keys(PRIMITIVES) as [PrimitiveId, ...PrimitiveId[]];

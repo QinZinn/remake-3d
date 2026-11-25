@@ -67,6 +67,12 @@ export const TubeParams = z.object({
   radius: pos().default(0.3),
 });
 
+export const BoxParams = z.object({
+  width: pos().default(10),
+  height: pos().default(4),
+  depth: pos().default(6),
+});
+
 export const PRIMITIVE_PARAMS = {
   bottle: BottleParams,
   jar: JarParams,
@@ -75,6 +81,7 @@ export const PRIMITIVE_PARAMS = {
   sleeve: SleeveParams,
   solid: SolidParams,
   tube: TubeParams,
+  box: BoxParams,
 } as const;
 
 export type BottleParams = z.output<typeof BottleParams>;
@@ -84,3 +91,4 @@ export type CapParams = z.output<typeof CapParams>;
 export type SleeveParams = z.output<typeof SleeveParams>;
 export type SolidParams = z.output<typeof SolidParams>;
 export type TubeParams = z.output<typeof TubeParams>;
+export type BoxParams = z.output<typeof BoxParams>;

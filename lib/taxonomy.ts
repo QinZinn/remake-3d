@@ -106,6 +106,16 @@ export const MATERIALS = {
     category: "supply",
     aliases: ["seeds", "seedling", "herb", "plant", "hạt giống", "cây con"],
   },
+  "hot-glue-stick": {
+    label: { en: "Hot glue stick", vi: "Que keo nến" },
+    category: "supply",
+    aliases: ["glue stick", "hot glue sticks", "glue gun stick", "que keo", "que keo nến"],
+  },
+  "masking-tape": {
+    label: { en: "Masking tape", vi: "Băng keo giấy" },
+    category: "supply",
+    aliases: ["tape", "paper tape", "painter's tape", "băng keo giấy", "băng dính giấy"],
+  },
   "acrylic-paint": {
     label: { en: "Acrylic paint", vi: "Sơn acrylic" },
     category: "supply",

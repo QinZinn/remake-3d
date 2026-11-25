@@ -261,13 +261,12 @@ export function frameOf(state: SceneState): Frame {
 }
 
 /**
- * Interpolate two poses of one object. Rotation turns about the centre of the
- * object's bounds (not its origin at the base), so a flipped part turns in
- * place instead of swinging around the floor.
+ * Interpolate two poses about a local pivot. By default a flipped part turns
+ * about the centre of its bounds.
  */
-export function blendObject<T extends ObjectState>(a: ObjectState, b: T, u: number): T {
+export function blendObject<T extends ObjectState>(a: ObjectState, b: T, u: number, localPivot?: V3): T {
   const bb = boundsOf(b);
-  const pivot = lerp3(bb.min, bb.max, 0.5);
+  const pivot = localPivot ?? lerp3(bb.min, bb.max, 0.5);
   const scaled = (s: readonly number[]): V3 => [pivot[0] * s[0], pivot[1] * s[1], pivot[2] * s[2]];
   const rotation = lerp3(a.rotation, b.rotation, u);
   const scale = lerp3(a.scale, b.scale, u);
@@ -291,11 +290,12 @@ export function blendObject<T extends ObjectState>(a: ObjectState, b: T, u: numb
  * Generic transition between any two states (local frames): shared objects
  * interpolate, objects only in `a` fade out, objects only in `b` fade in.
  */
-export function blendStates(a: SceneState, b: SceneState, u: number): Frame {
+export function blendStates(a: SceneState, b: SceneState, u: number, pivot?: { id: string; point: V3 }): Frame {
   const items: RenderItem[] = [];
   for (const nb of b.objects) {
     const na = findObject(a, nb.id);
-    const o = na ? blendObject(na, nb, u) : { ...nb, opacity: nb.opacity * u };
+    const localPivot = pivot?.id === nb.id ? pivot.point : undefined;
+    const o = na ? blendObject(na, nb, u, localPivot) : { ...nb, opacity: nb.opacity * u };
     items.push({ ...o, key: o.id });
   }
   for (const na of a.objects) {
@@ -490,12 +490,29 @@ const transform: OpHandler<"transform"> = {
     });
   },
   frame(prev, next, op, u) {
-    const f = blendStates(prev, next, u);
+    const pivot = op.pivot ? { id: op.target, point: op.pivot } : undefined;
+    const f = blendStates(prev, next, u, pivot);
     if (op.arc > 0) {
       const lift = op.arc * Math.sin(Math.PI * u);
       f.items = f.items.map((it) => (it.id === op.target ? { ...it, position: [it.position[0], it.position[1] + lift, it.position[2]] } : it));
     }
     return f;
+  },
+};
+
+const attach: OpHandler<"attach"> = {
+  duration: 1.1,
+  targets: (op) => [op.target, op.parent],
+  check(state, op) {
+    if (descendantIds(state, op.target).includes(op.parent)) return "attach would create a parent cycle";
+    return null;
+  },
+  apply(state, op) {
+    const { position, rotation, scale } = op.transform;
+    return update(state, op.target, { parent: op.parent, position: [...position], rotation: [...rotation], scale: [...scale] });
+  },
+  frame(prev, next, _op, u) {
+    return blendFrames(frameOf(prev), frameOf(next), u);
   },
 };
 
@@ -582,7 +599,7 @@ const thread: OpHandler<"thread"> = {
   },
 };
 
-export const HANDLERS: { [K in OpType]: OpHandler<K> } = { cut, remove, paint, transform, add, fill, thread };
+export const HANDLERS: { [K in OpType]: OpHandler<K> } = { cut, remove, paint, transform, attach, add, fill, thread };
 
 function handlerOf<T extends OpType>(op: OpOf<T>): OpHandler<T> {
   return HANDLERS[op.type as T];
