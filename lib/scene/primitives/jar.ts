@@ -29,7 +29,7 @@ export const jar = defineLathe<JarParams>({
       const h = (p.threadHeight * 0.65) / n;
       pts.push([p.mouthRadius * 1.04, y0 + h * 0.35], [p.mouthRadius, y0 + h * 0.72]);
     }
-    pts.push([p.mouthRadius * 1.02, p.height - 0.05], [p.mouthRadius, p.height]);
+    pts.push([p.mouthRadius * 1.02, Math.max(tb + p.threadHeight * 0.76, p.height - 0.05)], [p.mouthRadius, p.height]);
     return pts;
   },
 });

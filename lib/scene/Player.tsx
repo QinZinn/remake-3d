@@ -294,6 +294,7 @@ function ObjectMesh({ item, source }: { item: RenderItem; source: FrameSource })
   useEffect(() => () => material.dispose(), [material]);
   useEffect(() => {
     material.clippingPlanes = item.clip ? [clipPlane] : null;
+    material.clipShadows = Boolean(item.clip);
     // Closed thickened glass/PET shells refract cleanly with FrontSide; keep DoubleSide while clipped.
     material.side = transmissive && !item.clip ? FrontSide : DoubleSide;
     material.needsUpdate = true;

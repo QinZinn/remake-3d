@@ -59,8 +59,8 @@ function bloomPetals(
         primitive: "extrude",
         params: { points: daisyPetal, depth: 0.08, bevel: 0.025, curve: true },
         transform: {
-          position: [0, 0.22, 0],
-          rotation: [68, yaw, 0],
+          position: [0, 0.28, 0],
+          rotation: [90, 0, yaw],
           scale: [scale, scale, 1],
         },
         material: { preset: "paint", color: petalColor },

@@ -23,27 +23,16 @@ import {
 } from "three";
 import { currentProfile, isLatheObject, type ObjectState } from "./ops";
 import type { LatheId, MeshId, ProfilePoint } from "./primitives";
+import { sampleExtrudeContour } from "./primitives/extrude";
 import type { BoxParams, ExtrudeParams, TubeParams } from "./primitives/params";
 import type { RenderMaterial } from "./schema";
 
 // ---------------------------------------------------------------- geometry
 
 function traceContour(target: Shape | Path, pts: readonly (readonly [number, number])[], curve: boolean) {
-  if (curve && pts.length >= 3) {
-    const spline = new CatmullRomCurve3(
-      pts.map(([x, y]) => new Vector3(x, y, 0)),
-      true,
-      "centripetal",
-      0.5,
-    );
-    const sampled = spline.getPoints(Math.max(24, pts.length * 6));
-    target.moveTo(sampled[0].x, sampled[0].y);
-    for (let i = 1; i < sampled.length; i++) target.lineTo(sampled[i].x, sampled[i].y);
-    target.closePath();
-    return;
-  }
-  target.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i++) target.lineTo(pts[i][0], pts[i][1]);
+  const sampled = sampleExtrudeContour(pts, curve);
+  target.moveTo(sampled[0][0], sampled[0][1]);
+  for (let i = 1; i < sampled.length; i++) target.lineTo(sampled[i][0], sampled[i][1]);
   target.closePath();
 }
 

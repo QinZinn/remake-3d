@@ -49,7 +49,7 @@ export const bottle = defineLathe<BottleParams>({
       [p.neckRadius, neckBase + p.neckHeight * 0.74],
       [threadR, neckBase + p.neckHeight * 0.82],
       [p.neckRadius, neckBase + p.neckHeight * 0.89],
-      [p.neckRadius * 1.03, p.height - 0.06],
+      [p.neckRadius * 1.03, Math.max(neckBase + p.neckHeight * 0.89, p.height - 0.06)],
       [p.neckRadius, p.height],
     );
     return pts;

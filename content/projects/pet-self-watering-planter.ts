@@ -289,7 +289,7 @@ export default defineProject({
     },
     {
       title: "Paint the water tank (optional)",
-      text: "Lift the pot out and paint or wrap a decorative opaque band around the water reservoir, leaving a peek of clear plastic at the rim and base so you can still check the water level while blocking algae growth.",
+      text: "Lift the pot out and paint or wrap a decorative opaque band around the middle of the water reservoir to block light and stop green algae growing, leaving clear plastic at the base and rim so you can tell when the tank runs low.",
       ops: [
         {
           type: "add",
