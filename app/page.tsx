@@ -1,37 +1,36 @@
 import Link from "next/link";
 import { PROJECTS } from "@/content/projects";
-import { labelOf } from "@/lib/taxonomy";
+import CatalogHeader from "./components/CatalogHeader";
+import ProjectCard from "./components/ProjectCard";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-10 px-5 py-14">
-      <header className="flex flex-col gap-3">
-        <p className="text-sm font-semibold tracking-wide text-emerald-700 uppercase">ReMake 3D</p>
-        <h1 className="text-4xl font-semibold tracking-tight text-balance">Give your waste a second life, one step at a time.</h1>
-        <p className="max-w-xl text-lg text-stone-600">
-          Upcycling projects built from the things you already have, each with a 3D preview of every step. Finding projects from your own materials is coming soon.
-        </p>
-      </header>
-      <section aria-labelledby="projects" className="flex flex-col gap-4">
-        <h2 id="projects" className="text-sm font-semibold text-stone-500 uppercase">Projects</h2>
-        <ul className="grid gap-3">
-          {PROJECTS.map((p) => (
-            <li key={p.slug}>
-              <Link href={`/project/${p.slug}`} className="group flex flex-col gap-2 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition hover:border-emerald-600 hover:shadow">
-                <span className="text-lg font-semibold group-hover:text-emerald-800">{p.title}</span>
-                <span className="text-stone-600">{p.summary}</span>
-                <span className="flex flex-wrap gap-2 text-xs text-stone-500">
-                  <span className="rounded-full bg-stone-100 px-2 py-0.5 capitalize">{p.difficulty}</span>
-                  <span className="rounded-full bg-stone-100 px-2 py-0.5">{p.timeMinutes} min</span>
-                  {p.materials.filter((m) => !m.optional).slice(0, 3).map((m) => (
-                    <span key={m.id} className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-800">{labelOf(m.id)}</span>
-                  ))}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+    <>
+      <CatalogHeader active="catalog" />
+      <main className="mx-auto max-w-6xl px-5 pb-14 sm:px-8">
+        <section className="my-6 rounded-[2rem] bg-[#173e2c] px-6 py-11 text-white sm:my-9 sm:px-12 sm:py-14">
+          <h1 className="max-w-2xl font-serif text-[clamp(2.7rem,6vw,4.5rem)] leading-[1.02] tracking-tight text-balance">
+            Give what you have a second life.
+          </h1>
+          <p className="mt-4 max-w-md text-base leading-relaxed text-emerald-50/85 sm:text-lg">
+            Match the materials and tools you have to upcycling projects with step-by-step 3D guides.
+          </p>
+          <Link href="/find" className="focus-ring mt-6 inline-flex items-center gap-3 rounded-full bg-[#e3f1ce] px-5 py-3 text-sm font-semibold text-emerald-950 hover:bg-white">
+            Find projects <span aria-hidden>→</span>
+          </Link>
+        </section>
+        <section id="catalog" aria-labelledby="projects" className="scroll-mt-4">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 id="projects" className="text-2xl font-semibold tracking-tight">Project catalog</h2>
+            <p className="text-sm text-stone-600">{PROJECTS.length} guides</p>
+          </div>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {PROJECTS.map((project) => (
+              <li key={project.slug}><ProjectCard project={project} /></li>
+            ))}
+          </ul>
+        </section>
+      </main>
+    </>
   );
 }
