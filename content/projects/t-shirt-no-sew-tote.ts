@@ -74,7 +74,7 @@ export default defineProject({
         ...tieFringe,
         { type: "transform", target: "body", position: [0, 3.5, 0], rotation: [0, 0, 0], pivot: [0, 0, 0], arc: 3, duration: 1.1 },
       ],
-      camera: { position: [31, 34, 59], target: [0, 22, 0] },
+      camera: { position: [39, 45, 82], target: [0, 22.75, 0] },
     },
   ],
 });
