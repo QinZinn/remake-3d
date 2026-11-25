@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
 import { inventoryQuery, type Inventory } from "@/lib/inventory";
+import { mergeScannedMaterials, mergeScannedTools, type ScanItemId } from "@/lib/scan";
 import { labelOf, MATERIAL_IDS, MATERIALS, normalize, TOOL_IDS, TOOLS, type MaterialId, type ToolId } from "@/lib/taxonomy";
+import PhotoScanPanel from "./PhotoScanPanel";
 
 function searchable(value: string): string {
   return normalize(value).normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/g, "d");
@@ -106,7 +108,14 @@ export default function InventoryForm({ initialInventory }: { initialInventory: 
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const materialIds = MATERIAL_IDS.filter((id) => materials[id] !== undefined);
+  const selectedMaterialSet = new Set(materialIds);
+  const selectedToolSet = new Set(tools);
   const selectedCount = materialIds.length + tools.length;
+
+  function confirmScannedItems(ids: readonly ScanItemId[]) {
+    setMaterials((current) => mergeScannedMaterials(current, ids));
+    setTools((current) => mergeScannedTools(current, ids));
+  }
 
   function removeMaterial(id: MaterialId) {
     setMaterials((current) => {
@@ -126,18 +135,23 @@ export default function InventoryForm({ initialInventory }: { initialInventory: 
   return (
     <form onSubmit={submit} className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="grid gap-4">
+        <PhotoScanPanel
+          existingMaterials={selectedMaterialSet}
+          existingTools={selectedToolSet}
+          onConfirmItems={confirmScannedItems}
+        />
         <Picker
           name="Materials"
           placeholder="Search materials"
           options={MATERIAL_OPTIONS}
-          selected={new Set(materialIds)}
+          selected={selectedMaterialSet}
           onAdd={(id) => setMaterials((current) => ({ ...current, [id]: current[id] ?? 1 }))}
         />
         <Picker
           name="Tools"
           placeholder="Search tools"
           options={TOOL_OPTIONS}
-          selected={new Set(tools)}
+          selected={selectedToolSet}
           onAdd={(id) => setTools((current) => current.includes(id) ? current : [...current, id])}
         />
       </div>

@@ -20,7 +20,7 @@ export default async function FindPage({ searchParams }: { searchParams: Promise
             What do you have on hand?
           </h1>
           <p className="mt-3 max-w-xl text-base leading-relaxed text-stone-600">
-            Add the materials and tools you have to see what you can make.
+            Scan a photo or add the materials and tools you have to see what you can make.
           </p>
         </header>
         <InventoryForm key={inventoryQuery(inventory)} initialInventory={inventory} />
