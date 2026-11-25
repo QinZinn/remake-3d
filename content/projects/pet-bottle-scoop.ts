@@ -102,10 +102,10 @@ export default defineProject({
       text: "Grip the scoop by its capped neck and dip into dry non-food materials such as potting soil, perlite, mulch, or laundry granules. Tilt the open mouth slightly upward as you lift so the contents settle cleanly against the closed shoulder.",
       warning: "Reserve this scoop strictly for dry non-food goods; hand-cut plastic rims are hard to sanitise for food use.",
       ops: [
-        { type: "transform", target: "bottle.top", position: [13, 12.5, 0], rotation: [0, 0, 110], arc: 4 },
-        { type: "fill", target: "bottle.top", id: "scoop-fill", level: 0.65, inset: 0.94, material: { preset: "soil" } },
+        { type: "transform", target: "bottle.top", position: [12, 7.9, 0], rotation: [0, 0, 102], arc: 4 },
+        { type: "fill", target: "bottle.top", id: "scoop-fill", level: 0.65, inset: 0.93, material: { preset: "soil", color: "#523a2a" } },
       ],
-      camera: { position: [10, 22, 34], target: [-2, 6, 0] },
+      camera: { position: [10, 18, 34], target: [-3, 4.5, 0] },
     },
   ],
 });

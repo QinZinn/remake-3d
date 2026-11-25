@@ -154,6 +154,96 @@ describe("shape validation", () => {
     const prof = profileOf("bottle", params("bottle", { radius: 0.5, neckRadius: 0.2, shoulderHeight: 3 }));
     expect(prof.every(([r]) => r >= 0)).toBe(true);
   });
+
+  it("computes bounds for an extruded shape with bevel and holes", () => {
+    const s = stateWith([
+      {
+        id: "washer",
+        primitive: "extrude",
+        params: {
+          points: [
+            [-2, -2],
+            [2, -2],
+            [2, 2],
+            [-2, 2],
+          ],
+          holes: [
+            [
+              [-0.5, -0.5],
+              [0.5, -0.5],
+              [0.5, 0.5],
+              [-0.5, 0.5],
+            ],
+          ],
+          depth: 0.4,
+          bevel: 0.1,
+        },
+        material: { preset: "aluminium" },
+      },
+    ]);
+    const bb = boundsOf(findObject(s, "washer")!);
+    expect(bb.min[0]).toBeCloseTo(-2.1);
+    expect(bb.min[1]).toBeCloseTo(-2.1);
+    expect(bb.min[2]).toBeCloseTo(-0.3);
+    expect(bb.max[0]).toBeCloseTo(2.1);
+    expect(bb.max[1]).toBeCloseTo(2.1);
+    expect(bb.max[2]).toBeCloseTo(0.3);
+  });
+
+  it("accounts for curved contour sampling and rotated bevel corners in extrude bounds", () => {
+    const curved = stateWith([
+      {
+        id: "blob",
+        primitive: "extrude",
+        params: {
+          points: [
+            [-2, -2],
+            [2, -2],
+            [2, 2],
+            [-2, 2],
+          ],
+          depth: 1,
+          bevel: 0,
+          curve: true,
+        },
+        material: { preset: "fabric" },
+      },
+    ]);
+    const curvedBB = boundsOf(findObject(curved, "blob")!);
+    expect(curvedBB.max[0]).toBeGreaterThan(2.4);
+    expect(curvedBB.min[0]).toBeLessThan(-2.4);
+    expect(curvedBB.max[1]).toBeGreaterThan(2.4);
+    expect(curvedBB.min[1]).toBeLessThan(-2.4);
+
+    const diamond = stateWith([
+      {
+        id: "diamond",
+        primitive: "extrude",
+        params: {
+          points: [
+            [0, -2],
+            [2, 0],
+            [0, 2],
+            [-2, 0],
+          ],
+          depth: 1,
+          bevel: 0.1,
+        },
+        material: { preset: "fabric" },
+      },
+    ]);
+    const diamondBB = boundsOf(findObject(diamond, "diamond")!);
+    const expected = 2 + Math.SQRT2 * 0.1;
+    expect(diamondBB.max[0]).toBeCloseTo(expected, 4);
+    expect(diamondBB.min[0]).toBeCloseTo(-expected, 4);
+    expect(diamondBB.max[1]).toBeCloseTo(expected, 4);
+    expect(diamondBB.min[1]).toBeCloseTo(-expected, 4);
+  });
+
+  it("keeps short-neck bottle and short-thread jar profiles non-decreasing", () => {
+    expect(profileProblem(profileOf("bottle", params("bottle", { neckHeight: 0.1 })))).toBeNull();
+    expect(profileProblem(profileOf("jar", params("jar", { threadHeight: 0.1 })))).toBeNull();
+  });
 });
 
 describe("primitives", () => {

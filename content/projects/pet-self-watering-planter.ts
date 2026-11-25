@@ -1,4 +1,123 @@
-import { defineProject } from "@/lib/scene/schema";
+import { defineProject, type SceneOpInput } from "@/lib/scene/schema";
+
+/** Soft botanical herb leaf outline (base at origin, tip at +Y). */
+const basilLeaf: [number, number][] = [
+  [0, 0],
+  [1.05, 0.9],
+  [1.45, 2.3],
+  [0.9, 3.8],
+  [0, 4.5],
+  [-0.9, 3.8],
+  [-1.45, 2.3],
+  [-1.05, 0.9],
+];
+
+const herbLeaves: SceneOpInput[] = [
+  {
+    type: "add",
+    duration: 0.25,
+    object: {
+      id: "seedling.stem.main",
+      label: "Herb stem",
+      primitive: "tube",
+      params: {
+        // World-space coordinates emerging from the soil surface at y ≈ 17.8 cm.
+        points: [
+          [0, 17.2, 0],
+          [0.12, 20.6, 0.08],
+          [-0.08, 23.8, 0.12],
+          [0.04, 26.2, 0.06],
+        ],
+        radius: 0.22,
+      },
+      material: { preset: "paint", color: "#3d7a42" },
+    },
+  },
+  {
+    type: "add",
+    duration: 0.22,
+    object: {
+      id: "seedling.stem.side",
+      primitive: "tube",
+      params: {
+        points: [
+          [0.04, 19.6, 0.05],
+          [-0.9, 21.8, 0.45],
+          [-1.7, 23.4, 0.7],
+        ],
+        radius: 0.16,
+      },
+      material: { preset: "paint", color: "#458449" },
+    },
+  },
+  // Lush paired basil leaves fanning gently outward and upward in world space.
+  {
+    type: "add",
+    duration: 0.2,
+    object: {
+      id: "seedling.leaf.1",
+      primitive: "extrude",
+      params: { points: basilLeaf, depth: 0.14, bevel: 0.04, curve: true },
+      transform: { position: [0.1, 21.4, 0.1], rotation: [52, 25, -42] },
+      material: { preset: "paint", color: "#488f4c" },
+    },
+  },
+  {
+    type: "add",
+    duration: 0.2,
+    object: {
+      id: "seedling.leaf.2",
+      primitive: "extrude",
+      params: { points: basilLeaf, depth: 0.14, bevel: 0.04, curve: true },
+      transform: { position: [-0.08, 21.6, 0.1], rotation: [50, -30, 46] },
+      material: { preset: "paint", color: "#3f8444" },
+    },
+  },
+  {
+    type: "add",
+    duration: 0.2,
+    object: {
+      id: "seedling.leaf.3",
+      primitive: "extrude",
+      params: { points: basilLeaf, depth: 0.14, bevel: 0.04, curve: true },
+      transform: { position: [0.02, 24.4, 0.12], rotation: [42, 65, -28], scale: [0.85, 0.85, 1] },
+      material: { preset: "paint", color: "#58a358" },
+    },
+  },
+  {
+    type: "add",
+    duration: 0.2,
+    object: {
+      id: "seedling.leaf.4",
+      primitive: "extrude",
+      params: { points: basilLeaf, depth: 0.14, bevel: 0.04, curve: true },
+      transform: { position: [-0.04, 24.6, 0.08], rotation: [-46, -55, 30], scale: [0.8, 0.8, 1] },
+      material: { preset: "paint", color: "#62ae5e" },
+    },
+  },
+  {
+    type: "add",
+    duration: 0.2,
+    object: {
+      id: "seedling.leaf.5",
+      primitive: "extrude",
+      params: { points: basilLeaf, depth: 0.14, bevel: 0.04, curve: true },
+      transform: { position: [-1.65, 23.3, 0.68], rotation: [48, -12, 54], scale: [0.78, 0.78, 1] },
+      material: { preset: "paint", color: "#509853" },
+    },
+  },
+  {
+    type: "add",
+    duration: 0.2,
+    object: {
+      id: "seedling.leaf.6",
+      primitive: "extrude",
+      params: { points: basilLeaf, depth: 0.14, bevel: 0.04, curve: true },
+      transform: { position: [0.04, 26.0, 0.06], rotation: [32, 12, -14], scale: [0.64, 0.64, 1] },
+      material: { preset: "paint", color: "#6cb866" },
+    },
+  },
+];
 
 /**
  * Hero project: a self-watering planter from one PET bottle.
@@ -54,7 +173,7 @@ export default defineProject({
       note: "By natdragon5000 on Instructables.",
     },
   ],
-  camera: { position: [40, 32, 60], target: [0, 15, 0] },
+  camera: { position: [34, 28, 52], target: [0, 15, 0] },
   scene: {
     objects: [
       {
@@ -78,9 +197,17 @@ export default defineProject({
         id: "label",
         label: "Label",
         primitive: "sleeve",
-        params: { height: 7, radius: 5.06 },
-        transform: { position: [0, 8, 0] },
-        material: { preset: "paint", color: "#d94b3d" },
+        params: { height: 7.2, radius: 5.06 },
+        transform: { position: [0, 7.8, 0] },
+        material: { preset: "paint", color: "#d1493b" },
+      },
+      {
+        id: "label.stripe",
+        parent: "label",
+        primitive: "sleeve",
+        params: { height: 1.5, radius: 5.09 },
+        transform: { position: [0, 2.8, 0] },
+        material: { preset: "paint", color: "#f6efe2" },
       },
     ],
   },
@@ -98,20 +225,37 @@ export default defineProject({
       title: "Mark the cut line",
       text: "Measure about one third down from the top of the bottle, just below where the shoulder starts to narrow, and draw a line all the way around with a marker. The top piece becomes the pot, the bottom piece the water tank.",
       tip: "Hold the marker still on a book of the right height and turn the bottle against it for a perfectly level line.",
-      ops: [],
-      camera: { position: [28, 27, 46], target: [0, 18, 0] },
+      ops: [
+        {
+          type: "add",
+          duration: 0.55,
+          object: {
+            id: "cut-guide",
+            label: "Marker guide line",
+            primitive: "sleeve",
+            params: { height: 0.24, radius: 5.05 },
+            transform: { position: [0, 18.88, 0] },
+            material: { preset: "paint", color: "#22292f" },
+          },
+        },
+      ],
+      camera: { position: [26, 25, 44], target: [0, 18, 0] },
     },
     {
       title: "Cut the bottle in two",
       text: "Push the tip of the utility knife through the line to start a slot, then finish the cut around the bottle with scissors, following your mark.",
       warning: "Cut away from your hand and keep fingers clear of the blade. Children should leave the cutting to an adult.",
-      ops: [{ type: "cut", target: "bottle", y: 19, gap: 2.5 }],
-      camera: { position: [34, 30, 56], target: [0, 17, 0] },
+      ops: [
+        { type: "remove", target: "cut-guide", away: [0, 0, 0], duration: 0.15 },
+        { type: "cut", target: "bottle", y: 19, gap: 2.6 },
+      ],
+      camera: { position: [30, 28, 52], target: [0, 17, 0] },
     },
     {
       title: "Smooth the cut edges",
       text: "Run a piece of sandpaper along both cut rims, or trim off any jagged bits with scissors, so the edges will not scratch your hands when you lift the pot out to refill the tank.",
       ops: [],
+      camera: { position: [22, 24, 34], target: [0, 19.5, 0] },
     },
     {
       title: "Prepare the wick",
@@ -128,45 +272,71 @@ export default defineProject({
             [0.4, 24.5, 0],
             [0, 27.5, 0],
             [0, 30, 0],
-            [0, 32.5, 0.2],
-            [0.3, 35, 0.6],
+            [0, 32.8, 0.25],
+            [0.35, 35.8, 0.65],
           ],
-          radius: 0.35,
-          material: { preset: "fabric", color: "#e9e2d3" },
+          radius: 0.4,
+          material: { preset: "fabric", color: "#ede5d4" },
         },
       ],
-      camera: { position: [26, 38, 46], target: [0, 26, 0] },
+      camera: { position: [24, 36, 42], target: [0, 26, 0] },
     },
     {
       title: "Turn the top upside down into the tank",
       text: "Flip the top piece over and sit it in the bottom piece, neck down, so the wick hangs into the tank. The shoulder of the bottle rests on the rim and holds the pot in place.",
       ops: [{ type: "transform", target: "bottle.top", position: [0, 38.6, 0], rotation: [180, 0, 0], arc: 9 }],
-      camera: { position: [40, 34, 66], target: [0, 17, 0] },
+      camera: { position: [32, 26, 50], target: [0, 14, 0] },
     },
     {
       title: "Paint the water tank (optional)",
-      text: "Lift the pot out and paint the outside of the bottom piece in an opaque colour, or wrap it in paper. Keeping light out of the reservoir stops green algae growing in the water.",
-      ops: [{ type: "paint", target: "bottle.bottom", color: "#4f7a5a", preset: "paint" }],
-      camera: { position: [32, 24, 50], target: [0, 12, 0] },
+      text: "Lift the pot out and paint or wrap a decorative opaque band around the middle of the water reservoir to block light and stop green algae growing, leaving clear plastic at the base and rim so you can tell when the tank runs low.",
+      ops: [
+        {
+          type: "add",
+          duration: 0.85,
+          object: {
+            id: "tank.wrap",
+            label: "Painted tank sleeve",
+            parent: "bottle.bottom",
+            primitive: "sleeve",
+            params: { height: 11.4, radius: 5.06 },
+            transform: { position: [0, 2.2, 0] },
+            material: { preset: "paint", color: "#4d7a5d" },
+          },
+        },
+        {
+          type: "add",
+          duration: 0.45,
+          object: {
+            id: "tank.trim",
+            parent: "tank.wrap",
+            primitive: "sleeve",
+            params: { height: 0.65, radius: 5.09 },
+            transform: { position: [0, 10.75, 0] },
+            material: { preset: "paint", color: "#ece4d4" },
+          },
+        },
+      ],
+      camera: { position: [28, 22, 46], target: [0, 11.5, 0] },
     },
     {
       title: "Add water and soil",
       text: "Lift the pot out, fill the tank about a third full of water, and put the pot back so the wick dips into it. Fill the pot with potting soil, pressing it gently around the wick.",
       tip: "Keep the water level below the bottle neck so the soil never sits in water.",
       ops: [
-        { type: "transform", target: "bottle.top", position: [13, 46, 0], arc: 10 },
-        { type: "fill", target: "bottle.bottom", id: "water", level: 0.3, material: { preset: "water" } },
-        { type: "transform", target: "bottle.top", position: [0, 38.6, 0], arc: 10 },
-        { type: "fill", target: "bottle.top", id: "soil", level: 0.85, material: { preset: "soil" } },
+        { type: "transform", target: "bottle.top", position: [12.5, 45, 0], arc: 9, duration: 0.9 },
+        { type: "fill", target: "bottle.bottom", id: "water", level: 0.34, material: { preset: "water", color: "#6ec0e6" }, duration: 1.1 },
+        { type: "transform", target: "bottle.top", position: [0, 38.6, 0], arc: 9, duration: 0.9 },
+        { type: "fill", target: "bottle.top", id: "soil", level: 0.84, material: { preset: "soil", color: "#4d3627" }, duration: 1.1 },
       ],
-      camera: { position: [12, 68, 30], target: [4, 10, 0] },
+      camera: { position: [16, 48, 42], target: [3, 12, 0] },
     },
     {
       title: "Plant and place",
       text: "Plant your seedling or sow a few seeds, water the soil once from the top to settle it, and put the planter somewhere bright. Top up the tank whenever the level drops; the wick does the rest.",
       tip: "Herbs such as basil and mint are easy first plants for this planter.",
-      ops: [],
-      camera: { position: [40, 44, 62], target: [0, 14, 0] },
+      ops: herbLeaves,
+      camera: { position: [28, 28, 46], target: [0, 15.5, 0] },
     },
   ],
 });

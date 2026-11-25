@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { MATERIAL_IDS, TOOL_IDS } from "@/lib/taxonomy";
-import { BottleParams, BoxParams, CanParams, CapParams, JarParams, SleeveParams, SolidParams, TubeParams } from "./primitives/params";
+import { BottleParams, BoxParams, CanParams, CapParams, ExtrudeParams, JarParams, SleeveParams, SolidParams, TubeParams } from "./primitives/params";
 import { validateSteps } from "./validate";
 
 // ---------------------------------------------------------------- basics
@@ -56,6 +56,7 @@ export const SceneObjectSchema = z.discriminatedUnion("primitive", [
   z.object({ ...objectBase, primitive: z.literal("solid"), params: SolidParams }),
   z.object({ ...objectBase, primitive: z.literal("tube"), params: TubeParams }),
   z.object({ ...objectBase, primitive: z.literal("box"), params: BoxParams.default(BoxParams.parse({})) }),
+  z.object({ ...objectBase, primitive: z.literal("extrude"), params: ExtrudeParams.default(ExtrudeParams.parse({})) }),
 ]);
 export type SceneObject = z.infer<typeof SceneObjectSchema>;
 export type SceneObjectInput = z.input<typeof SceneObjectSchema>;

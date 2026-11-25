@@ -146,8 +146,8 @@ export default defineProject({
     {
       title: "Let set and display",
       text: "Give all glue joints a couple of minutes to cool completely, pull away any thin glue threads, and stand or hang your bottle cap medallion indoors away from moisture.",
-      ops: [{ type: "transform", target: "base", position: [0, 10.4, 0], rotation: [75, 0, 0], arc: 2 }],
-      camera: { position: [10, 16, 36], target: [0, 11, 0] },
+      ops: [{ type: "transform", target: "base", position: [0, 10.2, 0], rotation: [75, 0, 0], arc: 2 }],
+      camera: { position: [12, 16, 44], target: [0, 12.2, 0] },
     },
   ],
 });

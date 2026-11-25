@@ -1,8 +1,8 @@
-import { defineProject, type Vec3 } from "@/lib/scene/schema";
+import { defineProject, type SceneOpInput, type Vec3 } from "@/lib/scene/schema";
 
 /** Build a tight helical twine wrap around the slender bottle neck. */
 function neckWrapPath(radius: number, yStart: number, yEnd: number, turns: number): Vec3[] {
-  const segments = turns * 12;
+  const segments = turns * 14;
   const pts: Vec3[] = [];
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
@@ -14,6 +14,59 @@ function neckWrapPath(radius: number, yStart: number, yEnd: number, turns: numbe
     ]);
   }
   return pts;
+}
+
+/** Graceful petal outline (base at origin, tip at +Y). */
+const daisyPetal: [number, number][] = [
+  [0, 0],
+  [0.42, 0.55],
+  [0.52, 1.35],
+  [0.3, 1.95],
+  [0, 2.15],
+  [-0.3, 1.95],
+  [-0.52, 1.35],
+  [-0.42, 0.55],
+];
+
+/** Narrow green stem leaf outline. */
+const stemLeaf: [number, number][] = [
+  [0, 0],
+  [0.48, 0.7],
+  [0.54, 1.8],
+  [0.24, 2.7],
+  [0, 3.1],
+  [-0.24, 2.7],
+  [-0.54, 1.8],
+  [-0.48, 0.7],
+];
+
+/** Build radial flower petals parented to a bloom disc. */
+function bloomPetals(
+  prefix: string,
+  parent: string,
+  count: number,
+  petalColor: string,
+  scale = 1,
+): SceneOpInput[] {
+  return Array.from({ length: count }, (_, i): SceneOpInput => {
+    const yaw = (i / count) * 360;
+    return {
+      type: "add",
+      duration: 0.08,
+      object: {
+        id: `${prefix}-p${i + 1}`,
+        parent,
+        primitive: "extrude",
+        params: { points: daisyPetal, depth: 0.08, bevel: 0.025, curve: true },
+        transform: {
+          position: [0, 0.28, 0],
+          rotation: [90, 0, yaw],
+          scale: [scale, scale, 1],
+        },
+        material: { preset: "paint", color: petalColor },
+      },
+    };
+  });
 }
 
 /**
@@ -49,7 +102,7 @@ export default defineProject({
       note: "See the examples of using intact wine bottles as vases.",
     },
   ],
-  camera: { position: [28, 22, 42], target: [0, 12.5, 0] },
+  camera: { position: [26, 20, 42], target: [0, 12.5, 0] },
   scene: {
     objects: [
       {
@@ -64,17 +117,25 @@ export default defineProject({
         id: "cap",
         label: "Bottle cap",
         primitive: "cap",
-        params: { height: 1.5, radius: 1.5 },
+        params: { height: 1.5, radius: 1.48 },
         transform: { position: [0, 23.7, 0] },
-        material: { preset: "aluminium", color: "#c2b086" },
+        material: { preset: "aluminium", color: "#ccb684" },
       },
       {
         id: "label",
         label: "Paper label",
         primitive: "sleeve",
-        params: { height: 7.5, radius: 3.55 },
-        transform: { position: [0, 4.5, 0] },
-        material: { preset: "paint", color: "#d4c7a9" },
+        params: { height: 7.4, radius: 3.55 },
+        transform: { position: [0, 4.4, 0] },
+        material: { preset: "cardboard", color: "#ded2b8" },
+      },
+      {
+        id: "label.accent",
+        parent: "label",
+        primitive: "sleeve",
+        params: { height: 1.3, radius: 3.58 },
+        transform: { position: [0, 5.2, 0] },
+        material: { preset: "paint", color: "#8c5c42" },
       },
     ],
   },
@@ -88,7 +149,7 @@ export default defineProject({
         { type: "remove", target: "cap", away: [10, 8, 0] },
         { type: "remove", target: "label", away: [-18, 0, 5] },
       ],
-      camera: { position: [28, 22, 42], target: [0, 12.5, 0] },
+      camera: { position: [26, 20, 42], target: [0, 12.5, 0] },
     },
     {
       title: "Paint a lower colour band (optional)",
@@ -97,18 +158,31 @@ export default defineProject({
       ops: [
         {
           type: "add",
+          duration: 0.85,
           object: {
             id: "paint-band",
             label: "Painted lower band",
             parent: "bottle",
             primitive: "sleeve",
-            params: { height: 9.5, radius: 3.55 },
-            transform: { position: [0, 1.2, 0] },
-            material: { preset: "paint", color: "#c77d5c" },
+            params: { height: 9.2, radius: 3.55 },
+            transform: { position: [0, 0.98, 0] },
+            material: { preset: "paint", color: "#c47452" },
+          },
+        },
+        {
+          type: "add",
+          duration: 0.4,
+          object: {
+            id: "paint-rim",
+            parent: "bottle",
+            primitive: "sleeve",
+            params: { height: 0.45, radius: 3.57 },
+            transform: { position: [0, 9.75, 0] },
+            material: { preset: "paint", color: "#efe6d6" },
           },
         },
       ],
-      camera: { position: [22, 12, 32], target: [0, 7, 0] },
+      camera: { position: [22, 13, 34], target: [0, 7.5, 0] },
     },
     {
       title: "Wrap cotton string around the neck",
@@ -119,18 +193,18 @@ export default defineProject({
           type: "thread",
           target: "bottle",
           id: "neck-wrap",
-          path: neckWrapPath(1.46, 22.15, 24.35, 5),
-          radius: 0.19,
-          material: { preset: "fabric", color: "#e6dcc8" },
+          path: neckWrapPath(1.44, 21.8, 24.15, 6),
+          radius: 0.2,
+          material: { preset: "fabric", color: "#e8dec8" },
         },
       ],
-      camera: { position: [14, 24, 20], target: [0, 22, 0] },
+      camera: { position: [14, 24, 21], target: [0, 22, 0] },
     },
     {
       title: "Add clean water for fresh stems",
       text: "Fill the finished bottle about halfway with clean tap water if you are displaying fresh cuttings—or leave it dry for dried grasses and seed pods.",
-      ops: [{ type: "fill", target: "bottle", id: "water", level: 0.52, inset: 0.92, material: { preset: "water" } }],
-      camera: { position: [24, 18, 34], target: [0, 12, 0] },
+      ops: [{ type: "fill", target: "bottle", id: "water", level: 0.53, inset: 0.92, material: { preset: "water", color: "#74bdd9" } }],
+      camera: { position: [24, 18, 36], target: [0, 12.5, 0] },
     },
     {
       title: "Arrange flowers or dry cuttings",
@@ -139,6 +213,7 @@ export default defineProject({
       ops: [
         {
           type: "add",
+          duration: 0.35,
           object: {
             id: "stem-1",
             label: "Flower stem",
@@ -146,39 +221,53 @@ export default defineProject({
             primitive: "tube",
             params: {
               points: [
-                [-0.4, 3, 0.2],
+                [-0.35, 3, 0.2],
                 [-0.2, 14, 0.1],
                 [0, 24, 0],
-                [0.8, 30, 0.4],
-                [1.8, 35, 0.9],
+                [0.7, 29.2, 0.4],
+                [1.6, 33.4, 0.85],
               ],
               radius: 0.16,
             },
-            material: { preset: "paint", color: "#4e7a48" },
+            material: { preset: "paint", color: "#447843" },
           },
         },
         {
           type: "add",
+          duration: 0.2,
+          object: {
+            id: "leaf-1",
+            parent: "bottle",
+            primitive: "extrude",
+            params: { points: stemLeaf, depth: 0.08, bevel: 0.025, curve: true },
+            transform: { position: [0.55, 28.4, 0.35], rotation: [42, 22, -38] },
+            material: { preset: "paint", color: "#4e8a4a" },
+          },
+        },
+        {
+          type: "add",
+          duration: 0.22,
           object: {
             id: "bloom-1",
-            label: "Flower bloom",
+            label: "Golden daisy",
             parent: "bottle",
             primitive: "solid",
             params: {
               points: [
-                [0.15, 0],
-                [0.9, 0.5],
-                [1.3, 1.5],
-                [0.85, 2.3],
-                [0.3, 2.5],
+                [0.18, 0],
+                [0.58, 0.18],
+                [0.64, 0.42],
+                [0.42, 0.56],
               ],
             },
-            transform: { position: [1.8, 34.8, 0.9], rotation: [12, 0, -16] },
-            material: { preset: "paint", color: "#e5b84b" },
+            transform: { position: [1.62, 33.3, 0.86], rotation: [54, 16, -16] },
+            material: { preset: "paint", color: "#c9832a" },
           },
         },
+        ...bloomPetals("b1", "bloom-1", 8, "#f5cc53", 1.25),
         {
           type: "add",
+          duration: 0.35,
           object: {
             id: "stem-2",
             label: "Second stem",
@@ -186,39 +275,53 @@ export default defineProject({
             primitive: "tube",
             params: {
               points: [
-                [0.4, 4, -0.2],
+                [0.35, 4, -0.2],
                 [0.1, 16, -0.1],
-                [-0.1, 24.5, -0.1],
-                [-1.2, 29.5, -0.5],
-                [-2.2, 33, -0.8],
+                [-0.1, 24.4, -0.1],
+                [-1.1, 28.6, -0.45],
+                [-2.2, 31.6, -0.8],
               ],
               radius: 0.14,
             },
-            material: { preset: "paint", color: "#5e8c54" },
+            material: { preset: "paint", color: "#52884d" },
           },
         },
         {
           type: "add",
+          duration: 0.2,
+          object: {
+            id: "leaf-2",
+            parent: "bottle",
+            primitive: "extrude",
+            params: { points: stemLeaf, depth: 0.08, bevel: 0.025, curve: true },
+            transform: { position: [-0.9, 27.6, -0.35], rotation: [35, -35, 44], scale: [0.85, 0.85, 1] },
+            material: { preset: "paint", color: "#589452" },
+          },
+        },
+        {
+          type: "add",
+          duration: 0.22,
           object: {
             id: "bloom-2",
-            label: "Second bloom",
+            label: "White bloom",
             parent: "bottle",
             primitive: "solid",
             params: {
               points: [
-                [0.12, 0],
-                [0.75, 0.4],
-                [1.05, 1.2],
-                [0.65, 1.9],
-                [0.25, 2.1],
+                [0.16, 0],
+                [0.5, 0.16],
+                [0.56, 0.36],
+                [0.34, 0.48],
               ],
             },
-            transform: { position: [-2.2, 32.8, -0.8], rotation: [-10, 0, 18] },
-            material: { preset: "paint", color: "#f2eee6" },
+            transform: { position: [-2.22, 31.5, -0.8], rotation: [50, -18, 22] },
+            material: { preset: "paint", color: "#e8b43a" },
           },
         },
+        ...bloomPetals("b2", "bloom-2", 7, "#faf6ee", 1.15),
       ],
-      camera: { position: [30, 28, 52], target: [0, 18, 0] },
+      // Generous vertical framing so the glass base and tallest petals never clip on desktop or mobile.
+      camera: { position: [30, 26, 58], target: [0, 17.5, 0] },
     },
   ],
 });

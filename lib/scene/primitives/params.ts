@@ -73,6 +73,22 @@ export const BoxParams = z.object({
   depth: pos().default(6),
 });
 
+const Vec2 = z.tuple([z.number(), z.number()]);
+
+/** Extruded 2D closed outline in XY with optional holes, bevel and smooth curve sampling. */
+export const ExtrudeParams = z.object({
+  points: z.array(Vec2).min(3).default([
+    [-2, 0],
+    [2, 0],
+    [2, 4],
+    [-2, 4],
+  ]),
+  holes: z.array(z.array(Vec2).min(3)).default([]),
+  depth: pos().default(1),
+  bevel: z.number().min(0).default(0),
+  curve: z.boolean().default(false),
+});
+
 export const PRIMITIVE_PARAMS = {
   bottle: BottleParams,
   jar: JarParams,
@@ -82,6 +98,7 @@ export const PRIMITIVE_PARAMS = {
   solid: SolidParams,
   tube: TubeParams,
   box: BoxParams,
+  extrude: ExtrudeParams,
 } as const;
 
 export type BottleParams = z.output<typeof BottleParams>;
@@ -92,3 +109,4 @@ export type SleeveParams = z.output<typeof SleeveParams>;
 export type SolidParams = z.output<typeof SolidParams>;
 export type TubeParams = z.output<typeof TubeParams>;
 export type BoxParams = z.output<typeof BoxParams>;
+export type ExtrudeParams = z.output<typeof ExtrudeParams>;
