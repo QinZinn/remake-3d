@@ -449,6 +449,55 @@ describe("transitions", () => {
     expect(sampleTransition(tr, tr.duration)).toEqual(frameOf(stateAtStep(p, 1)));
   });
 
+  it("folds a box around its fixed local hinge", () => {
+    const hinged = parse(project({
+      scene: {
+        objects: [{
+          id: "panel", primitive: "box", params: { width: 8, height: 6, depth: 0.4 },
+          transform: { position: [2, 0, 1], rotation: [90, 0, 0] }, material: { preset: "cardboard" },
+        }],
+      },
+      steps: steps([{ type: "transform", target: "panel", rotation: [0, 0, 0], pivot: [0, 0, 0] }]),
+    }));
+    const fold = planTransition(hinged, 0, 1);
+    const mid = sampleTransition(fold, fold.duration / 2).items[0];
+    expect(mid.position).toEqual([2, 0, 1]);
+    expect(mid.rotation[0]).toBeCloseTo(45);
+    expect(boundsOf(mid)).toEqual({ min: [-4, 0, -0.2], max: [4, 6, 0.2] });
+  });
+
+  it("attaches an object without a jump in world space and carries it with its parent", () => {
+    const attached = parse(project({
+      scene: { objects: [
+        { id: "body", primitive: "bottle", transform: { position: [20, 0, 0] }, material: { preset: "pet" } },
+        { id: "lid", primitive: "cap", transform: { position: [0, 5, 0] }, material: { preset: "plastic" } },
+      ] },
+      steps: steps(
+        [{ type: "attach", target: "lid", parent: "body", transform: { position: [0, 29, 0] } }],
+        [{ type: "transform", target: "body", position: [30, 0, 0] }],
+      ),
+    }));
+    const attach = planTransition(attached, 0, 1);
+    expect(sampleTransition(attach, attach.duration / 2).items.find((item) => item.id === "lid")?.position).toEqual([10, 17, 0]);
+    expect(findObject(stateAtStep(attached, 1), "lid")?.parent).toBe("body");
+
+    const jump = planTransition(attached, 0, 2);
+    const lid = (time: number) => sampleTransition(jump, time).items.find((item) => item.id === "lid")!;
+    expect(lid(jump.duration * 0.001).position[0]).toBeCloseTo(0);
+    expect(lid(jump.duration).position).toEqual([30, 29, 0]);
+  });
+
+  it("rejects attachments that would create a parent cycle", () => {
+    const circular = project({
+      scene: { objects: [
+        { id: "body", primitive: "bottle", material: { preset: "pet" } },
+        { id: "lid", primitive: "cap", parent: "body", material: { preset: "plastic" } },
+      ] },
+      steps: steps([{ type: "attach", target: "body", parent: "lid", transform: {} }]),
+    });
+    expect(messages(circular).join()).toMatch(/attach would create a parent cycle/);
+  });
+
   it("the cut animation draws a cut line, then two clipped halves", () => {
     const tr = planTransition(p, 0, 1);
     expect(sampleTransition(tr, tr.duration * 0.2).effects[0]).toMatchObject({ kind: "cut-line", y: 18 });
@@ -482,8 +531,8 @@ describe("transitions", () => {
 });
 
 describe("catalog", () => {
-  it("has at least one project", () => {
-    expect(PROJECTS.length).toBeGreaterThan(0);
+  it("includes at least ten guides", () => {
+    expect(PROJECTS.length).toBeGreaterThanOrEqual(10);
   });
 
   describe.each(PROJECTS.map((pr) => [pr.slug, pr] as const))("%s", (_slug, pr) => {

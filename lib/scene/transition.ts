@@ -6,7 +6,7 @@
  * blends the two states directly. Either way the end frame is exactly the
  * target state, so scrubbing is exact.
  */
-import { applyOp, applySteps, blendFrames, blendStates, frameOf, opDuration, opFrame, resolveFrame, type Frame, type SceneState } from "./ops";
+import { applyOp, applySteps, blendFrames, blendStates, findObject, frameOf, opDuration, opFrame, resolveFrame, type Frame, type SceneState } from "./ops";
 import { clamp01, easeInOut } from "./math";
 import type { CameraView, Project, SceneOp } from "./schema";
 
@@ -24,7 +24,7 @@ export interface Transition {
   /** Seconds. 0 means "show `to` immediately". */
   duration: number;
   phases: Phase[] | null;
-  /** When set, the transition starts from this on-screen frame (an interrupted animation). */
+  /** Resolved starting frame for an interruption or a jump across an attachment. */
   fromFrame?: Frame;
 }
 
@@ -70,7 +70,12 @@ export function planTransition(project: HasScene, fromStepRaw: number, toStepRaw
     }
     return { from, to, duration: t, phases };
   }
-  return { from, to, duration: JUMP_DURATION, phases: null };
+  // A change of parent changes the coordinate system of the object's local pose.
+  const parentChanged = to.objects.some(({ id, parent }) => {
+    const before = findObject(from, id);
+    return before !== undefined && before.parent !== parent;
+  });
+  return { from, to, duration: JUMP_DURATION, phases: null, fromFrame: parentChanged ? frameOf(from) : undefined };
 }
 
 /** Frame at `time` seconds into the transition. */

@@ -3,6 +3,7 @@
  * Only the renderer imports this file.
  */
 import {
+  BoxGeometry,
   CatmullRomCurve3,
   Color,
   DoubleSide,
@@ -16,7 +17,7 @@ import {
 } from "three";
 import { currentProfile, isLatheObject, type ObjectState } from "./ops";
 import type { MeshId } from "./primitives";
-import type { TubeParams } from "./primitives/params";
+import type { BoxParams, TubeParams } from "./primitives/params";
 import type { RenderMaterial } from "./schema";
 
 /**
@@ -24,6 +25,10 @@ import type { RenderMaterial } from "./schema";
  * entry a type error when a mesh primitive is added.
  */
 export const MESH_GEOMETRY: { [K in MeshId]: (params: Readonly<Record<string, unknown>>) => BufferGeometry } = {
+  box(params) {
+    const { width, height, depth } = params as unknown as BoxParams;
+    return new BoxGeometry(width, height, depth).translate(0, height / 2, 0);
+  },
   tube(params) {
     const p = params as unknown as TubeParams;
     const curve = new CatmullRomCurve3(p.points.map(([x, y, z]) => new Vector3(x, y, z)));
