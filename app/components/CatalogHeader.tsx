@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export default function CatalogHeader({ active }: { active?: "catalog" | "find" }) {
+export default function CatalogHeader({ active }: { active?: "catalog" | "find" | "impact" }) {
   return (
     <header className="border-b border-stone-200/85 bg-[#f7f8f5]">
       <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-5 gap-y-2 px-5 py-2 sm:px-8">
@@ -21,6 +21,13 @@ export default function CatalogHeader({ active }: { active?: "catalog" | "find" 
             className="focus-ring rounded-lg px-3 py-2 text-stone-700 hover:bg-stone-200/65 aria-[current=page]:bg-white aria-[current=page]:text-emerald-900"
           >
             Find projects
+          </Link>
+          <Link
+            href="/impact"
+            aria-current={active === "impact" ? "page" : undefined}
+            className="focus-ring rounded-lg px-3 py-2 text-stone-700 hover:bg-stone-200/65 aria-[current=page]:bg-white aria-[current=page]:text-emerald-900"
+          >
+            Impact
           </Link>
         </nav>
       </div>
