@@ -10,14 +10,6 @@ import {
 
 export const MAX_SCAN_IMAGE_BYTES = 4 * 1024 * 1024;
 
-export const ALLOWED_IMAGE_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
-
-export type ScanImageMimeType = (typeof ALLOWED_IMAGE_MIME_TYPES)[number];
-
 export type ScanItemId = MaterialId | ToolId;
 
 export interface ScanItem {
@@ -29,26 +21,9 @@ export interface ScanResponse {
   items: ScanItem[];
 }
 
-export type ScanErrorCode =
-  | "empty_image"
-  | "unsupported_media_type"
-  | "payload_too_large"
-  | "invalid_image"
-  | "provider_unavailable"
-  | "provider_failed";
-
-export interface ScanErrorResponse {
-  error: ScanErrorCode;
-  message: string;
-}
-
 const CANONICAL_ORDER = new Map<ScanItemId, number>(
   ([...MATERIAL_IDS, ...TOOL_IDS] as readonly ScanItemId[]).map((id, index) => [id, index]),
 );
-
-export function isAllowedScanMimeType(value: string): value is ScanImageMimeType {
-  return (ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(value);
-}
 
 export function isScanItemId(id: string): id is ScanItemId {
   return isMaterialId(id) || isToolId(id);

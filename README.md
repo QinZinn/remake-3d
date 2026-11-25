@@ -26,17 +26,8 @@ missing 1–2 items, and inspiration. Optional items improve a match's score and
 a lower group. Equal scores favour the project that reuses more of what you selected by estimated weight.
 Edit inventory from the results page or share the results URL to reopen the same selection.
 
-## Vision scan (optional)
+## Vision scan
 
-`/find` lets you select or capture a photo, preview it locally, and press **Scan photo** to call `POST /api/scan` and review suggested materials and tools before adding them to your inventory.
+Open `/find` and choose or take a photo. Scanning uses a quantized CLIP model with ReMake 3D's inventory labels in the browser. The first scan needs internet access to download roughly 155 MB of weights. The browser can cache model files for later use. Photos stay on the device and scanning requires no API key.
 
-To enable photo scanning locally, copy `.env.example` to `.env.local` and set your server-side Anthropic API key:
-
-```sh
-cp .env.example .env.local
-```
-
-- `ANTHROPIC_API_KEY` — required on the server to call the Claude Messages API (`POST /api/scan`).
-- `ANTHROPIC_VISION_MODEL` — optional server-only override (defaults to `claude-haiku-5-5`).
-
-If `ANTHROPIC_API_KEY` is not set, `/api/scan` returns a graceful unavailable response (`503`) and manual inventory selection continues to work normally. The browser resizes photos and exports a JPEG without the original file metadata before upload. The scan route accepts JPEG, PNG, or WebP up to 4 MiB and does not log or save the image.
+The model makes suggestions from the photo and overlapping regions. Review them before adding them to your inventory. Manual entry remains available while the model loads and if scanning fails.
