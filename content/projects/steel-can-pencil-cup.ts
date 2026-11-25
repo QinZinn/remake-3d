@@ -97,7 +97,7 @@ export default defineProject({
           type: "thread",
           target: "can",
           id: "rim-cord",
-          path: coilPath(3.92, 9.55, 10.65, 3),
+          path: coilPath(3.86, 9.55, 10.62, 3),
           radius: 0.22,
           material: { preset: "fabric", color: "#dfd4be" },
         },
@@ -113,7 +113,7 @@ export default defineProject({
           type: "thread",
           target: "can",
           id: "base-cord",
-          path: coilPath(3.92, 1.0, 1.85, 2),
+          path: coilPath(3.86, 1.0, 1.85, 2),
           radius: 0.22,
           material: { preset: "fabric", color: "#dfd4be" },
         },
@@ -126,6 +126,7 @@ export default defineProject({
       ops: [
         {
           type: "add",
+          duration: 0.35,
           object: {
             id: "pencil-1",
             label: "Pencil",
@@ -134,16 +135,50 @@ export default defineProject({
             params: {
               points: [
                 [0.36, 0],
-                [0.36, 14.2],
-                [0.06, 16],
+                [0.36, 14.0],
               ],
             },
-            transform: { position: [-0.8, 0.4, 0.3], rotation: [6, 0, -9] },
-            material: { preset: "wood", color: "#d9a441" },
+            transform: { position: [-0.85, 0.35, 0.3], rotation: [6, 0, -9] },
+            material: { preset: "paint", color: "#e0aa3a" },
           },
         },
         {
           type: "add",
+          duration: 0.16,
+          object: {
+            id: "pencil-1.cone",
+            parent: "pencil-1",
+            primitive: "solid",
+            params: {
+              points: [
+                [0.36, 0],
+                [0.14, 1.35],
+              ],
+            },
+            transform: { position: [0, 14.0, 0] },
+            material: { preset: "wood", color: "#deb986" },
+          },
+        },
+        {
+          type: "add",
+          duration: 0.12,
+          object: {
+            id: "pencil-1.lead",
+            parent: "pencil-1",
+            primitive: "solid",
+            params: {
+              points: [
+                [0.14, 0],
+                [0.03, 0.52],
+              ],
+            },
+            transform: { position: [0, 15.35, 0] },
+            material: { preset: "paint", color: "#2c2f34" },
+          },
+        },
+        {
+          type: "add",
+          duration: 0.35,
           object: {
             id: "pencil-2",
             label: "Coloured pencil",
@@ -152,16 +187,51 @@ export default defineProject({
             params: {
               points: [
                 [0.36, 0],
-                [0.36, 13.6],
-                [0.06, 15.4],
+                [0.36, 13.4],
               ],
             },
-            transform: { position: [0.8, 0.4, -0.4], rotation: [-6, 0, 9] },
+            transform: { position: [0.85, 0.35, -0.4], rotation: [-6, 0, 9] },
             material: { preset: "paint", color: "#c95b45" },
           },
         },
         {
           type: "add",
+          duration: 0.16,
+          object: {
+            id: "pencil-2.ferrule",
+            parent: "pencil-2",
+            primitive: "solid",
+            params: {
+              points: [
+                [0.38, 0],
+                [0.38, 0.85],
+              ],
+            },
+            transform: { position: [0, 13.4, 0] },
+            material: { preset: "aluminium", color: "#cfd4db" },
+          },
+        },
+        {
+          type: "add",
+          duration: 0.14,
+          object: {
+            id: "pencil-2.eraser",
+            parent: "pencil-2",
+            primitive: "solid",
+            params: {
+              points: [
+                [0.35, 0],
+                [0.35, 0.68],
+                [0.24, 0.78],
+              ],
+            },
+            transform: { position: [0, 14.25, 0] },
+            material: { preset: "paint", color: "#e39a9a" },
+          },
+        },
+        {
+          type: "add",
+          duration: 0.35,
           object: {
             id: "pencil-3",
             label: "Pen",
@@ -170,16 +240,28 @@ export default defineProject({
             params: {
               points: [
                 [0.42, 0],
-                [0.42, 14.0],
-                [0.18, 15.0],
+                [0.42, 14.1],
+                [0.2, 15.0],
               ],
             },
-            transform: { position: [0.1, 0.4, 0.9], rotation: [-8, 0, -4] },
+            transform: { position: [0.1, 0.35, 0.9], rotation: [-8, 0, -4] },
             material: { preset: "plastic", color: "#2d4b73" },
           },
         },
+        {
+          type: "add",
+          duration: 0.14,
+          object: {
+            id: "pencil-3.clip",
+            parent: "pencil-3",
+            primitive: "box",
+            params: { width: 0.14, height: 2.8, depth: 0.14 },
+            transform: { position: [0, 11.4, 0.45] },
+            material: { preset: "aluminium", color: "#d5dae0" },
+          },
+        },
       ],
-      camera: { position: [24, 20, 32], target: [0, 7.5, 0] },
+      camera: { position: [22, 19, 32], target: [0, 7.5, 0] },
     },
   ],
 });

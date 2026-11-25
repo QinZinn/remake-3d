@@ -4,17 +4,17 @@ const board = { preset: "cardboard", color: "#bc8752" } as const;
 const paperTape = { preset: "cardboard", color: "#e3d2a4" } as const;
 
 const walls: SceneObjectInput[] = [
-  { id: "front", primitive: "box", params: { width: 24, height: 4, depth: 0.35 }, transform: { position: [0, 0.4, 8], rotation: [90, 0, 0] }, material: board },
-  { id: "back", primitive: "box", params: { width: 24, height: 4, depth: 0.35 }, transform: { position: [0, 0.4, -8], rotation: [-90, 0, 0] }, material: board },
-  { id: "left", primitive: "box", params: { width: 0.35, height: 4, depth: 16 }, transform: { position: [-12, 0.4, 0], rotation: [0, 0, 90] }, material: board },
-  { id: "right", primitive: "box", params: { width: 0.35, height: 4, depth: 16 }, transform: { position: [12, 0.4, 0], rotation: [0, 0, -90] }, material: board },
+  { id: "front", primitive: "box", params: { width: 24, height: 4, depth: 0.35 }, transform: { position: [0, 0.2, 8], rotation: [90, 0, 0] }, material: board },
+  { id: "back", primitive: "box", params: { width: 24, height: 4, depth: 0.35 }, transform: { position: [0, 0.2, -8], rotation: [-90, 0, 0] }, material: board },
+  { id: "left", primitive: "box", params: { width: 0.35, height: 4, depth: 15.65 }, transform: { position: [-12, 0.2, 0], rotation: [0, 0, 90] }, material: board },
+  { id: "right", primitive: "box", params: { width: 0.35, height: 4, depth: 15.65 }, transform: { position: [12, 0.2, 0], rotation: [0, 0, -90] }, material: board },
 ];
 
 const corners: SceneObjectInput[] = [
-  { id: "corner.fl", primitive: "box", params: { width: 4, height: 0.36, depth: 4 }, transform: { position: [-14, 0.22, 10] }, material: board },
-  { id: "corner.fr", primitive: "box", params: { width: 4, height: 0.36, depth: 4 }, transform: { position: [14, 0.22, 10] }, material: board },
-  { id: "corner.bl", primitive: "box", params: { width: 4, height: 0.36, depth: 4 }, transform: { position: [-14, 0.22, -10] }, material: board },
-  { id: "corner.br", primitive: "box", params: { width: 4, height: 0.36, depth: 4 }, transform: { position: [14, 0.22, -10] }, material: board },
+  { id: "corner.fl", primitive: "box", params: { width: 4, height: 0.36, depth: 4 }, transform: { position: [-14, 0.02, 10] }, material: board },
+  { id: "corner.fr", primitive: "box", params: { width: 4, height: 0.36, depth: 4 }, transform: { position: [14, 0.02, 10] }, material: board },
+  { id: "corner.bl", primitive: "box", params: { width: 4, height: 0.36, depth: 4 }, transform: { position: [-14, 0.02, -10] }, material: board },
+  { id: "corner.br", primitive: "box", params: { width: 4, height: 0.36, depth: 4 }, transform: { position: [14, 0.02, -10] }, material: board },
 ];
 
 const fold: SceneOpInput[] = [
@@ -30,7 +30,7 @@ const tapeCorners: SceneOpInput[] = [-1, 1].flatMap((x) => [-1, 1].flatMap((z): 
     object: {
       id: `tape.${x > 0 ? "r" : "l"}${z > 0 ? "f" : "b"}.long`,
       primitive: "box", params: { width: 2.15, height: 3.4, depth: 0.07 },
-      transform: { position: [x * 11.07, 0.65, z * 8.2] }, material: paperTape,
+      transform: { position: [x * 11.07, 0.45, z * 8.21] }, material: paperTape,
     },
   },
   {
@@ -38,7 +38,7 @@ const tapeCorners: SceneOpInput[] = [-1, 1].flatMap((x) => [-1, 1].flatMap((z): 
     object: {
       id: `tape.${x > 0 ? "r" : "l"}${z > 0 ? "f" : "b"}.short`,
       primitive: "box", params: { width: 0.07, height: 3.4, depth: 2.15 },
-      transform: { position: [x * 12.2, 0.65, z * 7.08] }, material: paperTape,
+      transform: { position: [x * 12.21, 0.45, z * 7.08] }, material: paperTape,
     },
   },
 ]));
@@ -62,10 +62,10 @@ export default defineProject({
     license: "Publisher copyright (reference only)",
     note: "Inspiration for using discarded cardboard to organize a desk. The single-sheet tray is our own design.",
   }],
-  camera: { position: [30, 47, 41], target: [0, 0, 0] },
+  camera: { position: [32, 48, 44], target: [0, 0, 0] },
   scene: {
     objects: [
-      { id: "base", source: "cardboard", primitive: "box", params: { width: 24, height: 0.4, depth: 16 }, transform: { position: [0, 0.2, 0] }, material: board },
+      { id: "base", source: "cardboard", primitive: "box", params: { width: 24, height: 0.4, depth: 16 }, transform: { position: [0, 0, 0] }, material: board },
       ...walls,
       ...corners,
     ],
