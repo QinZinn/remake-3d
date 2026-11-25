@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  auto_review:
+    enabled: true
+    base_branches:
+      - main
+  path_instructions:
+    - path: "content/projects/**"
+      instructions: "Check every step text is original wording and every source has url + license."
+    - path: "lib/scene/**"
+      instructions: "Check ops stay pure/deterministic."
