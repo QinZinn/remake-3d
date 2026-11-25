@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   sanitizeScanItems,
-  type ScanErrorResponse,
   type ScanItem,
   type ScanItemId,
 } from "@/lib/scan";
 import { isMaterialId, labelOf, type MaterialId, type ToolId } from "@/lib/taxonomy";
 import {
   formatFileSize,
-  preparePhotoForUpload,
+  preparePhotoForScan,
   validateSelectedFile,
 } from "./preparePhoto";
 
@@ -23,22 +22,12 @@ interface PhotoScanPanelProps {
 type ScanState =
   | { kind: "idle" }
   | { kind: "ready" }
-  | { kind: "scanning" }
+  | { kind: "scanning"; message: string }
   | { kind: "canceled" }
   | { kind: "review"; items: ScanItem[] }
   | { kind: "empty" }
   | { kind: "confirmed"; addedCount: number; alreadyPresentCount: number }
-  | { kind: "unavailable"; message: string }
   | { kind: "error"; message: string };
-
-function isScanErrorResponse(value: unknown): value is ScanErrorResponse {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { error?: unknown }).error === "string" &&
-    typeof (value as { message?: unknown }).message === "string"
-  );
-}
 
 export default function PhotoScanPanel({
   existingMaterials,
@@ -47,7 +36,7 @@ export default function PhotoScanPanel({
 }: PhotoScanPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const activeControllersRef = useRef<Set<AbortController>>(new Set());
+  const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -65,22 +54,15 @@ export default function PhotoScanPanel({
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedFile]);
 
-  useEffect(() => {
-    const controllers = activeControllersRef.current;
-    return () => {
-      for (const controller of controllers) {
-        controller.abort();
-      }
-      controllers.clear();
-    };
+  useEffect(() => () => {
+    requestIdRef.current += 1;
+    workerRef.current?.terminate();
   }, []);
 
   function cancelInFlight() {
     requestIdRef.current += 1;
-    for (const controller of activeControllersRef.current) {
-      controller.abort();
-    }
-    activeControllersRef.current.clear();
+    workerRef.current?.terminate();
+    workerRef.current = null;
   }
 
   function handleFileSelected(event: ChangeEvent<HTMLInputElement>) {
@@ -117,90 +99,45 @@ export default function PhotoScanPanel({
   async function handleScanPhoto() {
     if (!selectedFile || scanState.kind === "scanning") return;
 
-    cancelInFlight();
-    const requestId = requestIdRef.current;
-    const controller = new AbortController();
-    activeControllersRef.current.add(controller);
-
+    const requestId = ++requestIdRef.current;
     setChosenIds(new Set());
-    setScanState({ kind: "scanning" });
+    setScanState({ kind: "scanning", message: "Preparing photo…" });
 
-    try {
-      const prepared = await preparePhotoForUpload(selectedFile);
-      if (requestId !== requestIdRef.current || controller.signal.aborted) return;
+    const prepared = await preparePhotoForScan(selectedFile);
+    if (requestId !== requestIdRef.current) return;
+    if (!prepared.ok) {
+      setScanState({ kind: "error", message: prepared.message });
+      return;
+    }
 
-      if (!prepared.ok) {
-        setScanState({ kind: "error", message: prepared.message });
-        return;
-      }
-
-      const response = await fetch("/api/scan", {
-        method: "POST",
-        headers: {
-          "content-type": prepared.mediaType,
-        },
-        body: prepared.blob,
-        signal: controller.signal,
-      });
-
-      if (requestId !== requestIdRef.current || controller.signal.aborted) return;
-
-      let payload: unknown = null;
-      try {
-        payload = await response.json();
-      } catch {
-        payload = null;
-      }
-
-      if (requestId !== requestIdRef.current || controller.signal.aborted) return;
-
-      if (!response.ok) {
-        const errorBody = isScanErrorResponse(payload) ? payload : null;
-        if (response.status === 503 || errorBody?.error === "provider_unavailable") {
-          setScanState({
-            kind: "unavailable",
-            message:
-              errorBody?.message ??
-              "Photo scanning is currently unavailable. You can still add materials and tools manually.",
-          });
-          return;
-        }
-
-        setScanState({
-          kind: "error",
-          message:
-            errorBody?.message ??
-            "We could not scan this photo right now. You can try again, choose another photo, or add items manually.",
-        });
-        return;
-      }
-
-      const items = sanitizeScanItems(payload);
-      if (items === null) {
-        setScanState({
-          kind: "error",
-          message:
-            "We received an unexpected scan response. Please try again or add items manually.",
-        });
-        return;
-      }
-
-      if (items.length === 0) {
-        setScanState({ kind: "empty" });
-        return;
-      }
-
-      setChosenIds(new Set(items.filter(({ confidence }) => confidence >= 0.7).map(({ id }) => id)));
-      setScanState({ kind: "review", items });
-    } catch {
-      if (requestId !== requestIdRef.current || controller.signal.aborted) return;
+    function fail() {
+      if (requestId !== requestIdRef.current) return;
+      cancelInFlight();
       setScanState({
         kind: "error",
-        message:
-          "Could not reach the scan service. Check your connection or add items manually below.",
+        message: "Could not run the local model. Check your connection for the initial download, or add items manually.",
       });
-    } finally {
-      activeControllersRef.current.delete(controller);
+    }
+
+    try {
+      const worker = workerRef.current ?? new Worker(new URL("./scanPhoto.worker.ts", import.meta.url));
+      workerRef.current = worker;
+      worker.onerror = fail;
+      worker.onmessage = ({ data }) => {
+        if (requestId !== requestIdRef.current) return;
+        if (data.kind === "analyzing") {
+          setScanState({ kind: "scanning", message: "Analyzing photo on this device…" });
+        } else if (data.kind === "result") {
+          const items = sanitizeScanItems(data) ?? [];
+          setScanState(items.length ? { kind: "review", items } : { kind: "empty" });
+        } else {
+          fail();
+        }
+      };
+      setScanState({ kind: "scanning", message: "Loading the local model. The first scan downloads about 155 MB of weights." });
+      worker.postMessage(prepared.blob);
+    } catch {
+      fail();
     }
   }
 
@@ -301,7 +238,7 @@ export default function PhotoScanPanel({
             Take photo
           </button>
           <p className="basis-full text-xs text-stone-500">
-            Photos are resized on your device and uploaded for recognition when you press Scan photo.
+            Photos stay on this device. The first scan downloads the model (about 155 MB).
           </p>
         </div>
       ) : (
@@ -378,7 +315,7 @@ export default function PhotoScanPanel({
             aria-hidden
             className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-emerald-800 border-t-transparent motion-reduce:animate-none"
           />
-          <span>Scanning photo for ReMake materials and tools… Manual entry below stays available.</span>
+          <span>{scanState.message}</span>
         </div>
       )}
 
@@ -397,16 +334,6 @@ export default function PhotoScanPanel({
           <p className="mt-1 text-stone-600">
             Try a brighter or closer photo, or search and add your materials and tools manually below.
           </p>
-        </div>
-      )}
-
-      {scanState.kind === "unavailable" && (
-        <div
-          role="status"
-          className="mt-4 rounded-xl border border-[#e7dac1] bg-[#f8f4eb] px-4 py-3 text-sm text-[#69481e]"
-        >
-          <p className="font-semibold">Photo scanning unavailable</p>
-          <p className="mt-1">{scanState.message}</p>
         </div>
       )}
 
@@ -462,7 +389,7 @@ export default function PhotoScanPanel({
           </p>
 
           <ul aria-label="Detected items" className="mt-3 flex flex-wrap gap-2">
-            {scanState.items.map(({ id, confidence }) => {
+            {scanState.items.map(({ id }) => {
               const selected = chosenIds.has(id);
               const isMaterial = isMaterialId(id);
               const alreadyInInventory = isMaterial ? existingMaterials.has(id) : existingTools.has(id);
@@ -488,7 +415,7 @@ export default function PhotoScanPanel({
                     </span>
                     <span>{label}</span>
                     <span className="rounded-full bg-stone-900/5 px-2 py-0.5 text-[11px] font-medium text-stone-600">
-                      {confidence < 0.7 ? "Check match" : isMaterial ? "Material" : "Tool"}
+                      {isMaterial ? "Material" : "Tool"}
                     </span>
                     {alreadyInInventory && (
                       <span className="text-xs font-normal text-stone-500">(in inventory)</span>

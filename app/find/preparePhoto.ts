@@ -3,7 +3,7 @@ import { MAX_SCAN_IMAGE_BYTES } from "@/lib/scan";
 const MAX_PHOTO_DIMENSION = 1600;
 
 type PreparedPhotoResult =
-  | { ok: true; blob: Blob; mediaType: "image/jpeg" }
+  | { ok: true; blob: Blob }
   | { ok: false; message: string };
 
 export function formatFileSize(bytes: number): string {
@@ -23,7 +23,7 @@ export function validateSelectedFile(file: File): string | null {
 }
 
 /** Resize on device and encode a fresh JPEG without the original file metadata. */
-export async function preparePhotoForUpload(file: File): Promise<PreparedPhotoResult> {
+export async function preparePhotoForScan(file: File): Promise<PreparedPhotoResult> {
   const url = URL.createObjectURL(file);
   try {
     const image = new Image();
@@ -43,9 +43,9 @@ export async function preparePhotoForUpload(file: File): Promise<PreparedPhotoRe
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
 
     if (blob?.type === "image/jpeg" && blob.size > 0 && blob.size <= MAX_SCAN_IMAGE_BYTES) {
-      return { ok: true, blob, mediaType: "image/jpeg" };
+      return { ok: true, blob };
     }
-    return { ok: false, message: "Could not prepare the photo for upload. Please try a smaller image." };
+    return { ok: false, message: "Could not prepare the photo for scanning. Please try a smaller image." };
   } catch {
     return { ok: false, message: "Could not open this photo. Please choose a JPEG, PNG, or WebP image." };
   } finally {
