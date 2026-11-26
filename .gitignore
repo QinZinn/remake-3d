@@ -9,3 +9,13 @@ test-results/
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Local AI agent / Impeccable harness directories
+.agent/
+.agents/
+.claude/
+.codex/
+.gemini/
+.opencode/
+.pi/
+

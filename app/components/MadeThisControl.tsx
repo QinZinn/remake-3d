@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { formatGrams } from "@/lib/impact";
+import { ArrowRightIcon, CheckIcon } from "./Icons";
 import { setProjectCompleted, useImpactSnapshot } from "./useImpactStore";
 
 interface MadeThisControlProps {
@@ -38,10 +39,10 @@ export default function MadeThisControl({ slug, title, grams }: MadeThisControlP
 
   return (
     <div
-      className={`mt-1 rounded-2xl border p-4 transition-colors ${
+      className={`rounded-[4px] border p-4 transition-colors ${
         made
-          ? "border-emerald-700/25 bg-[#edf3e6]"
-          : "border-stone-200 bg-white"
+          ? "border-[var(--accent-sage-rule)] bg-[var(--accent-sage-tint)]"
+          : "border-[var(--rule)] bg-[var(--bg-plate)]"
       }`}
     >
       <div className="flex flex-wrap items-center gap-2.5">
@@ -52,13 +53,13 @@ export default function MadeThisControl({ slug, title, grams }: MadeThisControlP
           onClick={handlePrimaryToggle}
           className={
             made
-              ? "focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-800/20 bg-emerald-800 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-900"
+              ? "focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-[4px] border border-[var(--accent-sage)] bg-[var(--accent-sage)] px-4 py-2 text-sm font-semibold text-[var(--bg-plate)] transition-colors hover:bg-[#164731]"
               : "action-primary focus-ring"
           }
         >
           {made ? (
             <>
-              <span aria-hidden>✓</span>
+              <CheckIcon className="h-4 w-4" />
               <span>Made</span>
               <span className="sr-only"> — activate to undo</span>
             </>
@@ -81,14 +82,19 @@ export default function MadeThisControl({ slug, title, grams }: MadeThisControlP
         {made && (
           <Link
             href="/impact"
-            className="focus-ring ml-auto rounded-sm text-sm font-semibold text-emerald-900 underline-offset-4 hover:underline"
+            className="focus-ring ml-auto inline-flex items-center gap-1 rounded-[2px] text-sm font-semibold text-[var(--accent-sage)] underline-offset-4 hover:underline"
           >
-            View your impact <span aria-hidden>→</span>
+            <span>View your impact</span>
+            <ArrowRightIcon className="h-3.5 w-3.5" />
           </Link>
         )}
       </div>
 
-      <p className="mt-2.5 text-xs leading-relaxed text-stone-600">
+      <p
+        className={`mt-2.5 text-xs leading-relaxed ${
+          made ? "text-[#1A4330]" : "text-[var(--ink-muted)]"
+        }`}
+      >
         {made
           ? grams > 0
             ? `Counted once on this device (≈ ${formatGrams(grams)} estimated reused).`
@@ -99,7 +105,7 @@ export default function MadeThisControl({ slug, title, grams }: MadeThisControlP
       </p>
 
       {storageUnavailable && (
-        <p role="status" className="mt-2 text-xs text-amber-900">
+        <p role="status" className="mt-2 text-xs font-medium text-[var(--accent-ochre)]">
           Browser storage is unavailable, so changes apply only until you reload.
         </p>
       )}

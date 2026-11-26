@@ -8,19 +8,23 @@ export const metadata: Metadata = {
   description: "Find upcycling projects using materials and tools you already have.",
 };
 
-export default async function FindPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function FindPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const inventory = readInventory(await searchParams);
 
   return (
     <>
       <CatalogHeader active="find" />
-      <main className="mx-auto max-w-6xl px-5 py-9 sm:px-8 sm:py-12">
-        <header className="mb-7 sm:mb-9">
-          <h1 className="max-w-2xl font-serif text-[clamp(2.6rem,5.6vw,4.2rem)] leading-[1.05] tracking-tight text-balance text-emerald-950">
+      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-11">
+        <header className="mb-7 border-b border-[var(--rule)] pb-6 sm:mb-8">
+          <h1 className="font-display text-3xl leading-[1.08] font-bold tracking-[-0.025em] text-[var(--ink)] sm:text-4xl">
             What do you have on hand?
           </h1>
-          <p className="mt-3 max-w-xl text-base leading-relaxed text-stone-600">
-            Scan a photo or add the materials and tools you have to see what you can make.
+          <p className="mt-2.5 max-w-[58ch] text-base leading-relaxed text-[var(--ink-secondary)]">
+            Scan a photo on this device or pick your clean recyclables and household tools to match ready-to-build 3D guides.
           </p>
         </header>
         <InventoryForm key={inventoryQuery(inventory)} initialInventory={inventory} />
