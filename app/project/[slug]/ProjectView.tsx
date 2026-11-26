@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Project } from "@/lib/scene/schema";
 import { labelOf } from "@/lib/taxonomy";
+import MadeThisControl from "@/app/components/MadeThisControl";
 
 const Player = dynamic(() => import("@/lib/scene/Player"), {
   ssr: false,
@@ -63,7 +64,10 @@ export default function ProjectView({ project }: { project: Project }) {
 
       <div className="flex flex-col gap-8 px-5 py-6 lg:w-[30rem] lg:overflow-y-auto lg:py-8">
         <header className="flex flex-col gap-3">
-          <Link href="/" className="text-sm text-stone-500 hover:text-emerald-700">← All projects</Link>
+          <nav aria-label="Guide navigation" className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <Link href="/" className="focus-ring rounded-sm text-stone-500 hover:text-emerald-700">← All projects</Link>
+            <Link href="/impact" className="focus-ring rounded-sm font-medium text-emerald-800 underline-offset-4 hover:underline">Your impact</Link>
+          </nav>
           <h1 className="text-2xl font-semibold tracking-tight text-balance">{project.title}</h1>
           <p className="text-stone-600">{project.summary}</p>
           <dl className="flex flex-wrap gap-2 text-xs">
@@ -72,6 +76,7 @@ export default function ProjectView({ project }: { project: Project }) {
             <div className="rounded-full bg-stone-100 px-2.5 py-1"><dt className="sr-only">Steps</dt><dd>{n} steps</dd></div>
             {grams > 0 && <div className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800"><dt className="sr-only">Waste diverted</dt><dd>≈ {grams} g kept out of the bin</dd></div>}
           </dl>
+          <MadeThisControl slug={project.slug} title={project.title} grams={grams} />
         </header>
 
         <section aria-labelledby="needs" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
