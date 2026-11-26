@@ -1,6 +1,11 @@
 import { env, pipeline, RawImage } from "@huggingface/transformers";
 import { MATERIALS, MATERIAL_IDS, TOOLS, TOOL_IDS } from "@/lib/taxonomy";
-import { sanitizeScanItems, type ScanItemId } from "@/lib/scan";
+import {
+  resolveScanRegionItems,
+  type RegionScanItem,
+  type ScanItemId,
+  type ScanRegion,
+} from "@/lib/scan";
 
 env.allowLocalModels = false;
 // Single-threaded WASM also works when the page is not cross-origin isolated.
@@ -30,27 +35,40 @@ self.onmessage = async ({ data }: MessageEvent<Blob>) => {
     const scan = await classifier;
     self.postMessage({ kind: "analyzing" });
     const image = await RawImage.fromBlob(data);
-    const items = [];
+    const detections: RegionScanItem[] = [];
 
     // Classify the full photo and four overlapping regions to suggest multiple items.
-    const regions: RawImage[] = [image];
+    const regions: Array<{ region: ScanRegion; image: RawImage }> = [{ region: "full", image }];
     if (Math.min(image.width, image.height) >= 96) {
       const width = Math.ceil(image.width * 0.65);
       const height = Math.ceil(image.height * 0.65);
-      for (const x of [0, image.width - width]) {
-        for (const y of [0, image.height - height]) {
-          regions.push(await image.crop([x, y, x + width - 1, y + height - 1]));
+      const horizontal = [
+        [0, "left"],
+        [image.width - width, "right"],
+      ] as const;
+      const vertical = [
+        [0, "top"],
+        [image.height - height, "bottom"],
+      ] as const;
+      for (const [x, side] of horizontal) {
+        for (const [y, row] of vertical) {
+          regions.push({
+            region: `${row}-${side}`,
+            image: await image.crop([x, y, x + width - 1, y + height - 1]),
+          });
         }
       }
     }
 
-    for (const region of regions) {
-      const [best] = await scan(region, labels);
+    for (const { region, image: regionImage } of regions) {
+      const output = await scan(regionImage, labels);
+      const [best] = output;
       if (!best || Array.isArray(best)) continue;
       const id = candidates.get(best.label);
-      if (id && best.score >= 0.25) items.push({ id, confidence: best.score });
+      if (!id || best.score < 0.25) continue;
+      detections.push({ region, id, confidence: best.score });
     }
-    self.postMessage({ kind: "result", items: sanitizeScanItems({ items }) ?? [] });
+    self.postMessage({ kind: "result", items: resolveScanRegionItems(detections) });
   } catch {
     self.postMessage({ kind: "error" });
   }
