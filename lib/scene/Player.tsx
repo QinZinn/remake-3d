@@ -155,7 +155,7 @@ export default function Player({ project, step, onStepChange, speed = 1, record 
         >
           <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(MAX_DPR)} />
           <AdaptiveDpr pixelated />
-          <color attach="background" args={["#edf2ee"]} />
+          <color attach="background" args={["#e4e8e3"]} />
           <hemisphereLight args={["#fafdfb", "#cfd7d1", 0.65]} />
           <directionalLight
             position={[24, 46, 30]}
@@ -187,21 +187,39 @@ export default function Player({ project, step, onStepChange, speed = 1, record 
           {/* Subtle studio ground plane receiving soft directional shadows. */}
           <mesh receiveShadow rotation-x={-Math.PI / 2} position={[0, -0.02, 0]}>
             <circleGeometry args={[400, 64]} />
-            <meshStandardMaterial color="#e6ede8" roughness={0.96} metalness={0} />
+            <meshStandardMaterial color="#d8ddd7" roughness={0.96} metalness={0} />
           </mesh>
-          <fog attach="fog" args={["#edf2ee", 125, 320]} />
+          <fog attach="fog" args={["#e4e8e3", 125, 320]} />
           <OrbitControls makeDefault enableDamping minDistance={10} maxDistance={160} maxPolarAngle={Math.PI * 0.49} target={initialCam.target} />
           <CameraRig position={cam.position} target={cam.target} stepKey={step} />
         </Canvas>
+        <p
+          aria-hidden="true"
+          className="font-mono-spec pointer-events-none absolute top-3 left-3 hidden rounded-[3px] border border-[#c5ccc5]/85 bg-[#f9fbf8]/90 px-2.5 py-1 text-xs text-[#434843] backdrop-blur-xs sm:block"
+        >
+          Drag to orbit · Scroll to zoom · ← → keys
+        </p>
       </div>
 
-      <div className="flex flex-col gap-2 px-3 pt-1 pb-3">
-        <div className="h-1 w-full overflow-hidden rounded-full bg-black/10" aria-hidden>
-          <div className="h-full rounded-full bg-emerald-600 transition-[width] duration-150" style={{ width: `${((Math.max(0, step - 1) + (step === 0 ? 0 : progress)) / n) * 100}%` }} />
+      <div className="flex flex-col gap-2 px-3 pt-1 pb-3 sm:px-4">
+        <div className="h-1 w-full overflow-hidden rounded-[2px] bg-[#161917]/12" aria-hidden="true">
+          <div
+            className="h-full bg-[#b53218] transition-[width] duration-150"
+            style={{ width: `${((Math.max(0, step - 1) + (step === 0 ? 0 : progress)) / n) * 100}%` }}
+          />
         </div>
-        <div className="flex items-center justify-between gap-2 rounded-2xl bg-white px-3 py-1.5 shadow-sm">
-          <button type="button" onClick={() => go(step - 1)} disabled={step <= 0} className="rounded-full px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100 disabled:opacity-40" aria-label="Previous step">
-            ← Prev
+        <div className="flex items-center justify-between gap-2 rounded-[4px] border border-[#c5ccc5] bg-[#f9fbf8]/95 px-2.5 py-1.5 shadow-[0_6px_16px_-10px_rgba(22,25,23,0.22)] backdrop-blur-xs sm:px-3">
+          <button
+            type="button"
+            onClick={() => go(step - 1)}
+            disabled={step <= 0}
+            className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-[3px] px-2.5 py-1.5 text-sm font-semibold text-[#161917] transition-colors hover:bg-[#dfe4df] disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Previous step"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="square" aria-hidden="true">
+              <path d="M13 8H3M7 4 3 8l4 4" />
+            </svg>
+            <span>Prev</span>
           </button>
           <div className="flex items-center gap-3">
             <button
@@ -212,22 +230,39 @@ export default function Player({ project, step, onStepChange, speed = 1, record 
                   setPlaying(true);
                 } else setPlaying((p) => !p);
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-700 text-white shadow hover:bg-emerald-800"
+              className="focus-ring flex h-10 w-10 items-center justify-center rounded-full bg-[#b53218] text-[#f9fbf8] transition-colors hover:bg-[#922510]"
               aria-label={playing ? "Pause" : "Play all steps"}
               data-testid="play"
             >
               {playing ? (
-                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor" /><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor" /></svg>
+                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                  <rect x="2" y="1.5" width="3.5" height="11" rx="0.5" fill="currentColor" />
+                  <rect x="8.5" y="1.5" width="3.5" height="11" rx="0.5" fill="currentColor" />
+                </svg>
               ) : (
-                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden><path d="M3 1.5v11l9.5-5.5z" fill="currentColor" /></svg>
+                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                  <path d="M3.25 1.5v11l9-5.5z" fill="currentColor" />
+                </svg>
               )}
             </button>
-            <span className="min-w-20 text-center text-sm tabular-nums text-stone-600" aria-live="polite">
-              {step === 0 ? "Overview" : `Step ${step} / ${n}`}
+            <span
+              className="font-mono-spec min-w-24 text-center text-xs font-medium tracking-[0.03em] text-[#434843] uppercase"
+              aria-live="polite"
+            >
+              {step === 0 ? "Overview" : `Step ${String(step).padStart(2, "0")} / ${String(n).padStart(2, "0")}`}
             </span>
           </div>
-          <button type="button" onClick={() => go(step + 1)} disabled={step >= n} className="rounded-full px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100 disabled:opacity-40" aria-label="Next step">
-            Next →
+          <button
+            type="button"
+            onClick={() => go(step + 1)}
+            disabled={step >= n}
+            className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-[3px] px-2.5 py-1.5 text-sm font-semibold text-[#161917] transition-colors hover:bg-[#dfe4df] disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Next step"
+          >
+            <span>Next</span>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="square" aria-hidden="true">
+              <path d="M3 8h10M9 4l4 4-4 4" />
+            </svg>
           </button>
         </div>
       </div>
