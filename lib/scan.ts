@@ -17,9 +17,24 @@ export interface ScanItem {
   confidence: number;
 }
 
+export type ScanRegion = "full" | "top-left" | "bottom-left" | "top-right" | "bottom-right";
+
+export interface RegionScanItem extends ScanItem {
+  region: ScanRegion;
+}
+
 export interface ScanResponse {
   items: ScanItem[];
 }
+
+const CONTAINER_IDS: ReadonlySet<ScanItemId> = new Set(["pet-bottle", "glass-bottle", "glass-jar"]);
+const OPPOSITE_CORNERS: readonly (readonly [ScanRegion, ScanRegion])[] = [
+  ["top-left", "bottom-right"],
+  ["top-right", "bottom-left"],
+];
+const FULL_CONTAINER_MIN_CONFIDENCE = 0.4;
+const SEPARATE_CONTAINER_MIN_CONFIDENCE = 0.65;
+const CLEAR_SUPPORT_RATIO = 2;
 
 const CANONICAL_ORDER = new Map<ScanItemId, number>(
   ([...MATERIAL_IDS, ...TOOL_IDS] as readonly ScanItemId[]).map((id, index) => [id, index]),
@@ -121,4 +136,53 @@ export function mergeScannedTools(
   }
 
   return next ?? current;
+}
+
+function strongRegionContainer(containers: readonly RegionScanItem[], region: ScanRegion): ScanItemId | undefined {
+  const ids = new Set(
+    containers
+      .filter((item) => item.region === region && item.confidence >= SEPARATE_CONTAINER_MIN_CONFIDENCE)
+      .map((item) => item.id),
+  );
+  return ids.size === 1 ? [...ids][0] : undefined;
+}
+
+function resolveContainerConflict(containers: readonly RegionScanItem[]): readonly RegionScanItem[] {
+  const separated = new Set<ScanItemId>();
+  for (const [first, second] of OPPOSITE_CORNERS) {
+    const firstId = strongRegionContainer(containers, first);
+    const secondId = strongRegionContainer(containers, second);
+    if (firstId && secondId && firstId !== secondId) {
+      separated.add(firstId);
+      separated.add(secondId);
+    }
+  }
+  if (separated.size > 0) return containers.filter((item) => separated.has(item.id));
+
+  const full = containers.filter((item) => item.region === "full");
+  if (full.length === 1 && full[0].confidence >= FULL_CONTAINER_MIN_CONFIDENCE) {
+    return containers.filter((item) => item.id === full[0].id);
+  }
+
+  const totals = new Map<ScanItemId, number>();
+  let total = 0;
+  for (const { id, confidence } of containers) {
+    totals.set(id, (totals.get(id) ?? 0) + confidence);
+    total += confidence;
+  }
+  const top = [...totals.entries()].sort((a, b) => b[1] - a[1])[0];
+  return top && top[1] > 0 && top[1] >= (total - top[1]) * CLEAR_SUPPORT_RATIO
+    ? containers.filter((item) => item.id === top[0])
+    : [];
+}
+
+/** Resolve per-region detections into sanitized items, conservatively resolving transparent container conflicts. */
+export function resolveScanRegionItems(detections: readonly RegionScanItem[]): ScanItem[] {
+  const valid = detections.filter((item) => sanitizeScanItems({ items: [item] })?.length === 1);
+  const containers = valid.filter((item) => CONTAINER_IDS.has(item.id));
+  const resolved =
+    new Set(containers.map((item) => item.id)).size > 1
+      ? [...valid.filter((item) => !CONTAINER_IDS.has(item.id)), ...resolveContainerConflict(containers)]
+      : valid;
+  return sanitizeScanItems({ items: resolved }) ?? [];
 }
