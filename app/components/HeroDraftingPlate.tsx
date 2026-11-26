@@ -184,7 +184,7 @@ export default function HeroDraftingPlate() {
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => setStage(item.id)}
-                className={`focus-ring flex min-h-10 flex-col items-start rounded-[3px] border px-2.5 py-1.5 text-left transition-colors ${
+                className={`focus-ring-dark flex min-h-10 flex-col items-start rounded-[3px] border px-2.5 py-1.5 text-left transition-colors ${
                   isSelected
                     ? "border-[#E85A3C] bg-[#262C28] text-[#FAF7F1]"
                     : "border-[#313832] bg-transparent text-[#C7C1B4] hover:border-[#5D665F] hover:text-[#FAF7F1]"
@@ -203,7 +203,7 @@ export default function HeroDraftingPlate() {
           <p className="text-[#C7C1B4]">{active.note}</p>
           <Link
             href={active.href}
-            className="focus-ring inline-flex items-center gap-1 rounded-[2px] font-semibold text-[#F08A73] underline-offset-4 hover:text-[#FAF7F1] hover:underline"
+            className="focus-ring-dark inline-flex items-center gap-1 rounded-[2px] font-semibold text-[#F08A73] underline-offset-4 hover:text-[#FAF7F1] hover:underline"
           >
             <span>Inspect in 3D</span>
             <ArrowUpRightIcon className="h-3.5 w-3.5" />

@@ -12,6 +12,9 @@ const STREAM_ORDER: readonly MaterialCategory[] = [
   "glass",
   "metal",
   "textile",
+  "rubber",
+  "wood",
+  "supply",
 ];
 
 export default function CatalogBrowser({

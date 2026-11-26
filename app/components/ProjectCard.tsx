@@ -109,7 +109,7 @@ export default function ProjectCard({
           </p>
           <Link
             href={`/project/${data.slug}`}
-            aria-label={`View ${data.title}`}
+            aria-label={`Open 3D guide: ${data.title}`}
             className="focus-ring inline-flex items-center gap-1 rounded-[2px] text-sm font-semibold text-[var(--accent-cobalt)] underline-offset-4 hover:text-[var(--accent-vermilion)] hover:underline"
           >
             <span>Open 3D guide</span>
